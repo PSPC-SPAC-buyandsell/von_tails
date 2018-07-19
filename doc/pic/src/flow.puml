@@ -1,0 +1,109 @@
+@startuml
+/'
+Copyright 2017-2018 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+'/
+
+skinparam ParticipantPadding 20
+skinparam BoxPadding 20
+
+title Tails Synchronization Sequence
+
+box "Issuer" #SeaShell
+    actor "Issuer Anchor" as issuer
+    participant "Local Tails Dir" as dir_tails_i
+    participant "Sync script" as sync_i
+endbox
+
+participant "Tails Server" as tails
+
+box "Holder-Prover" #SeaShell
+    participant "Sync script" as sync_hp
+    participant "Local Tails Dir" as dir_tails_hp
+    actor "Holder-Prover Anchor" as hp
+endbox
+
+actor Actuator as ator
+
+note over issuer, dir_tails_i
+    need new revocation registry
+endnote
+
+ator -> issuer: issue revocable credential
+group credential issue process implements
+    issuer -> issuer: rev reg full? Yes
+    issuer -> issuer: create new rev reg
+    issuer -> dir_tails_i: write tails
+    dir_tails_i --> issuer:
+    issuer --> ator: credential
+end group
+
+loop while tails file not available
+    ator -> ator: get rev reg id\nfrom credential
+    ator -> hp: list tails file rev reg ids
+    group holder-prover implements
+        hp -> dir_tails_hp: get rev reg ids
+        dir_tails_hp --> hp: rev reg ids
+        hp --> ator: rev reg ids
+    end group
+    ator -> ator: have rev reg id\nfrom credential?\nNo
+end loop
+
+group sync script implements
+    sync_i -> dir_tails_i: get local tails files
+    dir_tails_i --> sync_i: local tails files
+    sync_i -> tails: get remote tails files
+    tails --> sync_i: remote tails files
+    sync_i -> tails: upload local-only tails files
+    tails --> sync_i:
+end group
+
+group sync script implements
+    sync_hp -> dir_tails_hp: get local tails files
+    dir_tails_hp --> sync_hp: local tails files
+    sync_hp -> tails: get remote tails files
+    tails --> sync_hp: remote tails files
+    sync_hp -> tails: download remote-only tails files
+    tails --> sync_hp: tails files
+    sync_hp -> dir_tails_hp: write remote-only tails files
+    dir_tails_hp --> sync_hp:
+end group
+
+ator -> ator: get rev reg id\nfrom credential
+ator -> hp: list tails file rev reg ids
+group holder-prover implements
+    hp -> dir_tails_hp: get rev reg ids
+    dir_tails_hp --> hp: rev reg ids
+    hp --> ator: rev reg ids
+end group
+ator -> ator: have rev reg id\nfrom credential?\nYes
+
+ator -> hp: store credential
+group credential storage process implements
+    hp -> hp: get rev reg id\nfrom credential
+    hp -> dir_tails_hp: have tails file\nfor rev reg id?
+    dir_tails_hp --> hp: Yes
+    hp -> hp: store credential
+    hp --> ator: wallet cred id
+end group
+
+ator -> hp: create proof
+group proof creation process implements
+    hp -> dir_tails_hp: read tails file\nfor rev reg id
+    dir_tails_hp --> hp: 
+    hp -> hp: create proof
+    hp --> ator: proof
+end group
+
+@enduml
