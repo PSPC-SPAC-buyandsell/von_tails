@@ -1,0 +1,153 @@
+#!/bin/bash
+
+#
+# Copyright 2017-2018 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+set -e
+SCRIPT_HOME=$(readlink -f $(dirname "${0}"))
+
+# --------------------------------------------------------------------------------------------------------------
+# Usage:
+# --------------------------------------------------------------------------------------------------------------
+usage() {
+    cat <<-EOF
+
+    Usage: ${0} {build|start|bg|stop|rm|tidy}
+
+    Options:
+
+    build - Build the docker image for the project. Do this first.
+
+    start - Create the application container from the build image
+            and start the service.
+
+    bg -    Create the application container from the build image
+            and start the service in the background.
+
+    stop -  Stop the service. This is a non-destructive process. It does not
+            delete the container; the next call to start will reuse it.
+
+    rm -    Remove any existing application container, as built through this 
+            script via docker-compose -- any further containers will remain.
+
+    tidy -  Remove all dangling (intermediate) images
+
+EOF
+exit 1
+}
+
+# --------------------------------------------------------------------------------------------------------------
+# Default settings:
+# --------------------------------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------------------------------------
+# Functions:
+# --------------------------------------------------------------------------------------------------------------
+
+configure_env() {
+    if [ -f .env ]
+    then
+        export $(cat .env | xargs)
+    fi
+
+    for ARG in $@
+    do
+        case "${ARG}" in
+            *=*)
+                export ${ARG}
+                ;;
+        esac
+    done
+}
+
+get_dc_args() {
+    ARGS=''
+    DC_FILE="docker-compose.yml"
+    DC_COMMAND=${1}
+    shift
+    COLOUR=1
+
+    if [ "${COMMAND}" == "start" ]
+    then
+        ARGS+="--force-recreate"
+    fi
+
+    for ARG in $@
+    do
+        case "${ARG}" in
+            --no-ansi)
+                COLOUR=0;;
+            *=*)
+                ;;
+            -*)
+                ARGS+=" ${ARG}";;
+            *)
+                ;;
+        esac
+    done
+
+    OPTS="-f ${DC_FILE}"
+    [ "${COLOUR}" -eq "0" ] && OPTS="${OPTS} --no-ansi"
+
+    echo ${OPTS} ${DC_COMMAND} ${ARGS}
+}
+
+build() {
+    echo -e "\nBuilding containers ..."
+    docker-compose $@
+}
+
+# --------------------------------------------------------------------------------------------------------------
+
+pushd "${SCRIPT_HOME}" > /dev/null
+COMMAND="${1}"
+shift || true
+
+case "${COMMAND}" in
+    bg)
+        DC_ARGS=$(get_dc_args up --no-start $@)
+        configure_env $@
+        docker-compose ${DC_ARGS}
+        docker-compose ${DC_ARGS/up --no-start/start}
+        ;;
+    start)
+        DC_ARGS=$(get_dc_args up $@)
+        configure_env $@
+        docker-compose ${DC_ARGS}
+        ;;
+    stop)
+        DC_ARGS=$(get_dc_args stop $@)
+        configure_env $@
+        docker-compose ${DC_ARGS}
+        ;;
+    rm)
+        DC_ARGS=$(get_dc_args rm $@)
+        configure_env $@
+        docker-compose ${DC_ARGS}
+        ;;
+    build)
+        DC_ARGS=$(get_dc_args build $@)
+        configure_env $@
+        build ${DC_ARGS}
+        ;;
+    tidy)
+        while read -r HASH; do docker rmi ${HASH}; done < <(docker images -f 'dangling=true' -q)
+        ;;
+    *)
+        usage
+esac
+
+popd > /dev/null

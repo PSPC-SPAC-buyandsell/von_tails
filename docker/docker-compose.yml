@@ -1,0 +1,15 @@
+version: '3'
+services:
+
+    von_tails:
+        build:
+            context: ..
+            dockerfile: docker/Dockerfile.von_tails
+        image: von_tails
+        hostname: von_tails
+        environment:
+            PIPENV_MAX_DEPTH: 16
+            HOST_IP: 0.0.0.0
+            HOST_PORT: ${HOST_PORT_VON_TAILS:-8808}
+        ports:
+            - ${HOST_PORT:-8808}:${HOST_PORT:-8808}

@@ -1,0 +1,51 @@
+FROM ubuntu:17.10
+
+ENV BUILD=/root/app-root HOME=/root
+WORKDIR ${BUILD}
+
+RUN apt-get update \
+    && apt-get install -y software-properties-common python-software-properties \
+    && add-apt-repository -y ppa:pypa/ppa \
+    && apt-get update \
+    && apt-get install -y build-essential \
+        pkg-config \
+        cmake \
+        libssl-dev \
+        openssl \
+        libsqlite3-dev \
+        libsodium-dev \
+        python3-pip \
+        python3-nacl \
+        apt-transport-https \
+        ca-certificates \
+        wget
+
+RUN set -ex
+RUN wget -q https://www.python.org/ftp/python/3.5.5/Python-3.5.5.tgz \
+    && tar -xzf Python-3.5.5.tgz
+
+WORKDIR Python-3.5.5
+RUN ./configure --prefix /usr/local \
+    && make \
+    && make install
+
+WORKDIR ${BUILD}
+RUN rm -rf Python-3.5.5 Python-3.5.5.tgz
+
+ENV LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    PIPENV_MAX_DEPTH=16 \
+    HOST_IP=0.0.0.0
+RUN apt-get install -y pipenv
+
+COPY src/app/requirements.txt ${HOME}/
+COPY docker/docker-entrypoint.sh ${BUILD}/
+RUN chmod a+x ${BUILD}/docker-entrypoint.sh
+
+WORKDIR ${HOME}/src
+COPY src/app app
+
+WORKDIR ${HOME}
+RUN pipenv install --python python3.5 -r ${HOME}/requirements.txt
+
+ENTRYPOINT ["pipenv", "run", "/root/app-root/docker-entrypoint.sh"]
