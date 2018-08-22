@@ -11,6 +11,7 @@ RUN apt-get update \
         pkg-config \
         cmake \
         libssl-dev \
+        libffi-dev \
         openssl \
         libsqlite3-dev \
         libsodium-dev \
@@ -21,16 +22,16 @@ RUN apt-get update \
         wget
 
 RUN set -ex
-RUN wget -q https://www.python.org/ftp/python/3.5.5/Python-3.5.5.tgz \
-    && tar -xzf Python-3.5.5.tgz
+RUN wget -q https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tgz \
+    && tar -xzf Python-3.7.0.tgz
 
-WORKDIR Python-3.5.5
+WORKDIR Python-3.7.0
 RUN ./configure --prefix /usr/local \
     && make \
     && make install
 
 WORKDIR ${BUILD}
-RUN rm -rf Python-3.5.5 Python-3.5.5.tgz
+RUN rm -rf Python-3.7.0 Python-3.7.0.tgz
 
 ENV LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
@@ -46,6 +47,6 @@ WORKDIR ${HOME}/src
 COPY src/app app
 
 WORKDIR ${HOME}
-RUN pipenv install --python python3.5 -r ${HOME}/requirements.txt
+RUN pipenv install --python python3.7 -r ${HOME}/requirements.txt
 
 ENTRYPOINT ["pipenv", "run", "/root/app-root/docker-entrypoint.sh"]

@@ -15,6 +15,8 @@ limitations under the License.
 """
 
 
+import logging
+
 from os import sys
 from os.path import isdir
 from threading import Lock, Timer
@@ -81,11 +83,11 @@ def sched():
         usage()
 
 if __name__ == '__main__':
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)-15s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S')
     # uncomment to spam the log with every invocation
-    # logging.basicConfig(
-        # level=logging.INFO,
-        # format='%(asctime)-15s: %(message)s',
-        # datefmt='%Y-%m-%d %H:%M:%S')
     # logging.info('Invoked {}'.format(' '.join(sys.argv)))
 
     if len(sys.argv) != 6:
