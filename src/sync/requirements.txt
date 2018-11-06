@@ -1,2 +1,2 @@
 requests==2.19.1
-von_anchor==1.6.*
+von_anchor>=1.6.35
