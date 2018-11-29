@@ -32,7 +32,7 @@ def usage():
     Print usage message.
     """
 
-    print('\nUsage: multi_sync.py <n> <local-tails-dir> <tails-server-host> <tails-server-port> issuer|prover\n')
+    print('\nUsage: multisync.py <n> <local-tails-dir> <tails-server-host> <tails-server-port> issuer|prover\n')
     print()
     print('where:')
     print('    <n>:                 number of iterations, evenly spaced over a minute (minimum 1, maximum 60)')
