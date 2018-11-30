@@ -1,2 +1,2 @@
-requests==2.20.0
+requests>=2.20.1
 von_anchor>=1.6.41

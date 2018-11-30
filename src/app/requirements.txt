@@ -1,3 +1,2 @@
-requests==2.20.0
-sanic==0.7.0
+sanic==0.8.3
 von_anchor>=1.6.41
