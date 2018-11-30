@@ -33,7 +33,7 @@ to create the docker image standing up the tails file server.
 Deploy Source and Create Log Directory
 ======================================
 
-The operator copies the ``src/sync`` directory from the ``von_tails`` installation directory to the issuer and holder-prover anchor hosts, to a location where ``pipenv`` will pick up the anchor's virtual environment. The operator creates a directory for logs i f one is not already present. For example,
+The operator copies the ``src/sync`` directory from the ``von_tails`` installation directory to the issuer and holder-prover anchor hosts, to a location where ``pipenv`` will pick up the anchor's virtual environment. The operator creates a directory for logs if one is not already present. For example,
 
 .. code-block:: bash
 
@@ -68,11 +68,12 @@ A sample cron configuration record for an issuer follows:
 
 .. code-block:: bash
 
-    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails/sync; pipenv run python multisync.py 20 /home/operator/.indy_client/tails 192.168.56.119 8808 issuer >> /home/operator/von_tails/log/anchor-sync.log 2>&1'
+    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails/sync; pipenv run python multisync.py 20 /home/operator/.indy_client/tails 192.168.56.119 8808 issuer >> /home/operator/von_tails/log/anchor-sync.$(date +\%Y-\%m-\%d).log 2>&1'
 
 and for a holder-prover:
 
 .. code-block:: bash
 
-    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails/sync; pipenv run python multisync.py 20 /home/operator/.indy_client/tails 192.168.56.119 8808 prover >> /home/operator/von_tails/log/anchor-sync.log 2>&1'
+    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails/sync; pipenv run python multisync.py 20 /home/operator/.indy_client/tails 192.168.56.119 8808 prover >> /home/operator/von_tails/log/anchor-sync.$(date +\%Y-\%m-\%d).log 2>&1'
 
+where both direct logs to rotating file dated daily.
