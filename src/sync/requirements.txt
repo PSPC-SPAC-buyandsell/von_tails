@@ -1,2 +1,3 @@
-requests>=2.20.1
-von_anchor>=1.6.41
+requests>=2.21.0
+python3-indy==1.7.0-dev-916
+von_anchor>=1.7.4

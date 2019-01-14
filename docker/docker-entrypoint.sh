@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# Copyright 2017-2018 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+# Copyright 2017-2019 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,12 +18,9 @@
 
 export HOST_IP=${HOST_IP:-0.0.0.0}
 export HOST_PORT=${HOST_PORT}
+export RUST_LOG=${RUST_LOG:-error}
+export TEST_POOL_IP=${TEST_POOL_IP:-10.0.0.2}
 
 cd "${HOME}"/src
-CMD="$@"
-if [ -z "${CMD}" ]
-then
-    CMD="python -m sanic app.app --host=${HOST_IP} --port=${HOST_PORT}"
-fi
-
-exec ${CMD}
+von_anchor_setnym app/config/config.ini
+python -m sanic app.app --host=${HOST_IP} --port=${HOST_PORT}

@@ -1,5 +1,5 @@
 """
-Copyright 2017-2018 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+Copyright 2017-2019 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,57 +21,67 @@ from os import sys
 from os.path import isdir
 from threading import Lock, Timer
 
-from sync import main
+from von_anchor import NominalAnchor
+from von_anchor.frill import do_wait
+from von_anchor.nodepool import NodePool
+
+from sync import Profile, config, main, setup
 
 
 LOCK = Lock()
 
 
-def usage():
+def usage() -> None:
     """
     Print usage message.
     """
 
-    print('\nUsage: multisync.py <n> <local-tails-dir> <tails-server-host> <tails-server-port> issuer|prover\n')
+    print()
+    print('Usage: multisync.py <n> <config-ini>')
     print()
     print('where:')
-    print('    <n>:                 number of iterations, evenly spaced over a minute (minimum 1, maximum 60)')
-    print('    <local-tails-dir>:   tails directory on anchor host')
-    print('    <tails-server-host>: hostname or IP address of remote tails server')
-    print('    <tails-server-port>: port for remote tails server')
-    print('    issuer|prover:       issuer to upload local-only tails files, prover to download remote-only')
+    print('    * <n> represents the number (1-30) of iterations, spaced over a minute')
+    print('    * <config-ini> represents the path to the configuration file.')
+    print()
+    print('Each iteration synchronizes tails files against the server as per configuration.')
+    print()
+    print('See sync.py for configuration file details.')
+    print()
 
 
-def dispatch(dir_tails, host, port, role):
+def dispatch(profile: Profile, pool: NodePool, noman: NominalAnchor) -> None:
     """
     Dispatch a sync invocation.
+
+    :param profile: tails client profile
+    :param pool: open node pool or None
+    :param noman: open nominal anchor or None
     """
 
     if LOCK.acquire(False):  # demur if sync in progress
         try:
-            main(dir_tails, host, port, role)
+            do_wait(main(profile, pool, noman))
         finally:
             LOCK.release()
 
 
-def sched():
+def sched() -> None:
     """
-    Schedule sync invocations.
+    Schedule sync invocations for dispatch evenly over a minute as per script arguments.
     """
 
     arg_n = sys.argv[1]
-    arg_dir_tails = sys.argv[2]
-    arg_host = sys.argv[3]
-    arg_port = sys.argv[4]
-    arg_role = sys.argv[5].lower()
 
-    if arg_n.isdigit() and isdir(arg_dir_tails) and arg_port.isdigit() and arg_role in ('issuer', 'prover'):
-        iterations = min(max(1, int(arg_n)), 60)  # 1 <= n <= 60 iterations per minute
+    if arg_n.isdigit():
+        arg_config_ini = sys.argv[2]
+        (profile, pool, noman) = do_wait(setup(arg_config_ini))
+
+        iterations = min(max(1, int(arg_n)), 30)  # 1 <= n <= 60 iterations per minute
         interval = 60.0 / iterations
 
         threads = []
         for i in range(iterations):
-            threads.append(Timer(i * interval, dispatch, [arg_dir_tails, arg_host, arg_port, arg_role]))
+            threads.append(Timer(i * interval, dispatch, [profile, pool, noman]))
 
         for thread in threads:
             thread.start()
@@ -90,7 +100,12 @@ if __name__ == '__main__':
     # uncomment to spam the log with every invocation
     # logging.info('Invoked {}'.format(' '.join(sys.argv)))
 
-    if len(sys.argv) != 6:
+    logging.getLogger('urllib').setLevel(logging.ERROR)
+    logging.getLogger('asyncio').setLevel(logging.WARNING)
+    logging.getLogger('von_anchor').setLevel(logging.WARNING)
+    logging.getLogger('indy').setLevel(logging.CRITICAL)
+
+    if len(sys.argv) != 3:
         usage()
     else:
         sched()

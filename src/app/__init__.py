@@ -1,5 +1,5 @@
 """
-Copyright 2017-2018 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+Copyright 2017-2019 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,20 +15,36 @@ limitations under the License.
 """
 
 
-from os.path import dirname, join as pjoin
+from os.path import dirname, join
 from sanic import Sanic
 
-from app.cfg import init_logging
+from app.cache import MEM_CACHE
+from app.cfg import init_logging, set_config
+from app.bootseq import boot
 
 
-DIR_STATIC = pjoin(dirname(__file__), 'static')
+DIR_STATIC = join(dirname(__file__), 'static')
 
 
 # initialize app
 app = Sanic(strict_slashes=True)
 app.static('/static', DIR_STATIC)
-app.static('/favicon.ico', pjoin(DIR_STATIC, 'favicon.ico'))
+app.static('/favicon.ico', join(DIR_STATIC, 'favicon.ico'))
 init_logging()
+set_config()
+
+@app.listener('before_server_stop')
+async def cleanup(app, loop):
+    tsan = await MEM_CACHE.get('tsan')
+    if tsan is not None:
+        await tsan.close()
+
+    pool = await MEM_CACHE.get('pool')
+    if pool is not None:
+        await pool.close()
+
+# start
+boot()
 
 # load views
 from app import views

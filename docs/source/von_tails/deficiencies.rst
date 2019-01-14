@@ -6,14 +6,18 @@ The project is a reference implementation of an external tails file server. Its 
 Server Security
 ====================================
 
-There is no control over what entities can upload to the tails file server, on revocation registries built on what credential definition identifiers nor what issuer DIDs. While tails files are public, a denial of service attack could masquerade as an issuer and upload authoritative-looking bogus tails files to the server. Issuers then would not be able to upload legitimate tails files on the same revocation registry identifiers. Holder-provers would download and use these bad tails files, impeding the proof creation process.
+At present, the tails server vets issuer uploads by signature against the current time and proof of origin - only its issuer may upload a tails file for a revocation registry; the current time serves as a nonce within configurable clock skew. Similarly, the tails file server vets administrative deletion requests against the current time and proof of origin - only the tails server anchor itself may call for deletion via the RESTful API.
 
-In addition, although the synchronization scripts do not engage it, the tails file server offers a tails file deletion API. This API may present a denial of service attack until issuer synchronization scripts engage and re-upload local-only tails files. If an attacker invokes the deletion API continuously, the attack would tie up resources on the issuer anchor host and make downloads to the holder-prover anchor host unreliable.
+There is no connection security tied to the tails file server; it operates on http. TLS implementation would require a proxy server, integration of X.509 TLS certificate organizational PKI, and/or a DID-auth_ implementation on the tails server itself.
+
+.. _DID-auth: https://github.com/WebOfTrustInfo/rwot6-santabarbara/blob/master/draft-documents/did_auth_draft.md
+
+There is no master access control list to restrict uploads to issuers of interest: at present, any issuer anchor on the ledger may post its tails files to any tails file server.
 
 Synchronization Script Granularity
 ====================================
 
-At present, synchronization scripts operate on the entire tails directory structure. Not all holder-provers may be interested in tails file updates from all issuers using a tails file server.
+At present, the issuer synchronization process selects for tails files corresponding to revocation registries that the issuer anchor built. Operating as a prover profile, synchronization scripts operate on the entire tails directory structure, and download all tails files at the server. Not all holder-provers may be interested in tails file updates from all issuers using a tails file server.
 
 Unit Tests
 ====================================

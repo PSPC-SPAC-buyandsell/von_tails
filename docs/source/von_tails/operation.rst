@@ -77,3 +77,61 @@ Script ``src/multisync.py`` performs several iterations of the synchronization p
 A new iteration of the synchronization process only starts if one is not already running – typical operation will not overlap iterations.
 
 This script's intended use is integration via cron, as per :ref:`integrate_cron`.
+
+
+.. _sync-config:
+
+Configuration
+........................
+
+These scripts take a ``.ini``-style configuration file with the following content:
+
+* section ``[Tails Server]``, specifying:
+
+    * ``host``: the hostname or address of the tails server
+    * ``port``: the port on which the tails server listens
+
+* section ``[Tails Client]``, specifying:
+
+    * ``profile``: ``issuer`` to upload or ``prover`` to download
+    * ``tails.dir``: the location of the top of the tails directory on the client host
+
+* (for issuers only) section ``[Node Pool]``, specifying:
+    * ``name``: the name of the node pool
+    * ``genesis.txn.path``: the path to the file with the node pool's genesis transactions
+
+* (for issuers only) section ``[VON Anchor]``, specifying:
+    * ``seed``: the seed for the (issuer) VON anchor
+    * ``wallet.name``: the name of the wallet
+    * ``wallet.type``: the wallet type (defaults to indy-sdk default)
+    * ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).
+
+Administrative Deletion Script
+------------------------------
+
+In the case where an audit reveals suspect content, an administrative deletion script ``src/admin/delete.py`` provides a means to delete such via the RESTful API. The script takes a configuration file and an identifier to match tails file content by revocation registry identifier; one of:
+
+* ``all``: matching everything, or
+* an issuer DID: matching all tails file content that the VON anchor having the issuer DID produced, or
+* a credential definition identifier: matching tails file content from revocation registries corresponding to the indicated credential definition, or
+* a revocation registry identifier: matching one tails file content for the single indicated revocation registry.
+
+Configuration
+........................
+
+The script takes a ``.ini``-style configuration file with the following content:
+
+* section ``[Tails Server]``, specifying:
+
+    * ``host``: the hostname or address of the tails server
+    * ``port``: the port on which the tails server listens
+
+* section ``[Node Pool]``, specifying:
+    * ``name``: the name of the node pool
+    * ``genesis.txn.path``: the path to the file with the node pool's genesis transactions
+
+* section ``[VON Anchor]``, specifying:
+    * ``seed``: the seed for the tails server VON anchor
+    * ``wallet.name``: the name of the wallet
+    * ``wallet.type``: the wallet type (defaults to indy-sdk default)
+    * ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).

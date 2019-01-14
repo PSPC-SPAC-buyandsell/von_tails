@@ -1,5 +1,5 @@
 """
-Copyright 2017-2018 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+Copyright 2017-2019 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,18 +18,23 @@ limitations under the License.
 import logging
 import logging.config
 
+from configparser import ConfigParser
 from os import makedirs
-from os.path import abspath, dirname, join as pjoin
+from os.path import dirname, expandvars, isfile, join, realpath
+
+from von_anchor.frill import do_wait, inis2dict
+
+from app.cache import MEM_CACHE
 
 
-def init_logging():
+def init_logging() -> None:
     """
     Initialize logging configuration.
     """
 
-    dir_log = pjoin(dirname(abspath(__file__)), 'log')
+    dir_log = join(dirname(realpath(__file__)), 'log')
     makedirs(dir_log, exist_ok=True)
-    path_log = pjoin(dir_log, 'von_tails.log')
+    path_log = join(dir_log, 'von_tails.log')
 
     logging.basicConfig(
         filename=path_log,
@@ -37,6 +42,22 @@ def init_logging():
         format='%(asctime)-15s | %(levelname)-8s | %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S')
     logging.getLogger('asyncio').setLevel(logging.ERROR)
+    logging.getLogger('aiocache').setLevel(logging.ERROR)
+    logging.getLogger('indy').setLevel(logging.CRITICAL)
+    logging.getLogger('von_anchor').setLevel(logging.INFO)
     logging.getLogger('von_tails').setLevel(logging.INFO)
-    logging.getLogger('requests').setLevel(logging.ERROR)
-    logging.getLogger('urllib3').setLevel(logging.CRITICAL)
+
+
+def set_config() -> dict:
+    """
+    Read configuration file content into memory cache.
+
+    :return: configuration dict
+    """
+
+    ini = join(dirname(realpath(__file__)), 'config', 'config.ini')
+
+    do_wait(MEM_CACHE.delete('config'))
+    do_wait(MEM_CACHE.set('config', inis2dict(ini)))
+
+    return do_wait(MEM_CACHE.get('config'))

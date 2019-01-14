@@ -1,7 +1,7 @@
-VON Tails Synchronization Scripts
-=================================
+VON Tails Client Scripts
+========================
 
 .. toctree::
    :maxdepth: 4
 
-   sync
+   tails-client

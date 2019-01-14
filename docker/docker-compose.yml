@@ -1,15 +1,42 @@
 version: '3'
 services:
 
+    indy_pool:
+        build:
+            context: ..
+            args:
+                pool_ip: ${TEST_POOL_IP:-10.0.0.2}
+            dockerfile: docker/indy-pool.dockerfile
+        image: indy_pool
+        ports:
+            - "9700-9709:9700-9709"
+        networks:
+            - indy_pool_network
+
     von_tails:
         build:
             context: ..
-            dockerfile: docker/Dockerfile.von_tails
+            dockerfile: docker/von_tails.dockerfile
+            args:
+              - TEST_POOL_IP=${TEST_POOL_IP:-10.0.0.2}
+              - INDY_POOL_NAME=pool1
+              - TAILS_SERVER_SEED=${TAILS_SERVER_SEED:-00000000000000000000TailsServer1}
+        depends_on:
+            - indy_pool
         image: von_tails
         hostname: von_tails
         environment:
             PIPENV_MAX_DEPTH: 16
             HOST_IP: 0.0.0.0
             HOST_PORT: ${HOST_PORT_VON_TAILS:-8808}
+            RUST_LOG: error
+            TEST_POOL_IP: ${TEST_POOL_IP:-10.0.0.2}
+        networks:
+            - indy_pool_network
         ports:
             - ${HOST_PORT:-8808}:${HOST_PORT:-8808}
+
+networks:
+    indy_pool_network:
+        external:
+            name: indy_pool_network

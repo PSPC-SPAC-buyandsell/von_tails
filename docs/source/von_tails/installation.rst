@@ -17,7 +17,7 @@ at the command prompt. This creates a ``von_tails`` installation directory in pl
 Build Tails File Server
 ==============================
 
-Building the tails file server composes a docker container locally, listening on the port that environment variable ``HOST_PORT_VON_TAILS`` specifies (default 8808).
+Building the tails file server composes a docker container locally, listening on the port that environment variable ``${HOST_PORT_VON_TAILS}`` specifies (default 8808).
 
 From the ``von_tails`` installation directory, the operator issues at the prompt:
 
@@ -26,54 +26,108 @@ From the ``von_tails`` installation directory, the operator issues at the prompt
     $ cd docker
     $ ./manage build
 
-to create the docker image standing up the tails file server.
+to create the docker image standing up the tails file server. The sequence above assumes a current installation of ``von_base`` in the operator's home directory.
 
 .. _deploy:
 
-Deploy Source and Create Log Directory
-======================================
+Tails Client Deployment and Configuration
+=========================================
 
-The operator copies the ``src/sync`` directory from the ``von_tails`` installation directory to the issuer and holder-prover anchor hosts, to a location where ``pipenv`` will pick up the anchor's virtual environment. The operator creates a directory for logs if one is not already present. For example,
+This section specifies deployment and configuration for clients of the tails server.
+
+Prepare Client Directory Structure
+++++++++++++++++++++++++++++++++++
+
+The operator creates directories to hold scripts, logs, and configuration on issuer and holder-prover anchor hosts of interest. For example, the operator could issue:
 
 .. code-block:: bash
 
     $ cd /home/operator
-    $ mkdir -p von_tails
-    $ cd von_tails
-    $ scp operator@192.168.56.119:./von_tails/sync .
-    $ mkdir -p log
+    $ mkdir -p von_tails/config
+    $ mkdir -p von_tails/log
 
-could deploy the synchronization scripts from a tails file server host to an anchor host running the ancho, with all components on all hosts running as user ``operator``.
+to prepare the directory structure with all components to run as ``operator`` on the host.
+
+Deploy Source and Requirements Specifications
++++++++++++++++++++++++++++++++++++++++++++++
+
+The operator copies the ``*.py`` scripts and ``requirements.txt`` files from the ``src/sync`` directory of the ``von_tails`` installation directory to the issuer and holder-prover anchor hosts, to a location where ``pipenv`` will pick up the anchor's virtual environment (see :ref:`venv`). For example, on a host running a VON anchor to synchronize, the operator could issue:
+
+.. code-block:: bash
+
+    $ cd /home/operator
+    $ cd von_tails
+    $ scp operator@192.168.56.119:./von_tails/src/sync/\*.{py,txt} .
+
+to deploy source and requirements specification files.
+
+Deploy and Edit Configuration
++++++++++++++++++++++++++++++
+
+This section details the configuration process for tails clients.
+
+Issuer Anchor Host
+------------------
+
+In particular, on a host running an issuer VON anchor, the operator issues:
+
+.. code-block:: bash
+
+    $ cd /home/operator
+    $ cd von_tails/config
+    $ scp operator@192.168.56.119:./von_tails/src/sync/config/issuer.ini .
+
+The operator edits the configuration file to fit the operating environment as per :ref:`sync-config`.
+
+Holder-Prover Anchor Host
+-------------------------
+
+On a host running a holder-prover VON anchor, the operator issues instead:
+
+.. code-block:: bash
+
+    $ cd /home/operator
+    $ cd von_tails/config
+    $ scp operator@192.168.56.119:./von_tails/src/sync/config/prover.ini .
+
+The operator edits the configuration file to fit the operating environment as per :ref:`sync-config`.
+
+Tails Server Host
+-----------------
+
+On the tails server host, the operator locates and edit configuration file ``von_tails/src/admin/config/admin.ini`` to fit the operating environment as per :ref:`sync-config`; its VON anchor is the tails server anchor.
+
+.. _venv:
 
 Prepare Virtual Environment
 ===========================
 
-On the issuer and holder-prover anchor hosts, the operator ensures that the ``pipenv`` virtual environemtn includes required packages. For example,
+On the issuer and holder-prover anchor tails client hosts, the operator ensures that the ``pipenv`` virtual environment includes required packages. For example,
 
 .. code-block:: bash
 
     $ cd /home/operator/von_tails
-    $ pipenv install -r sync/requirements.txt
+    $ pipenv install -r requirements.txt
 
-to apply the requirements if the operator installed the ``sync/`` directory in the ``/home/operator/von_tails/sync/`` location as per :ref:`deploy`.
+to apply the requirements if the operator installed the ``src/sync/`` directory in the ``/home/operator/von_tails/`` location as per :ref:`deploy`.
 
 .. _integrate_cron:
 
 Integrate with cron
 ===================
 
-The operator then updates the cron configuration on each host to engage the ``src/sync/multisync.py`` script every minute, directing it to fire a synchronization operation to the frequency desired (e.g., 20 times per minute or every 3 seconds) and specifying the log location.
+On the issuer and holder-prover anchor tails client hosts, the operator updates the cron configuration on each host to engage the ``src/multisync.py`` script every minute, directing it to fire a synchronization operation to the frequency desired (e.g., 20 times per minute or every 3 seconds) and specifying the configuration file.
 
 A sample cron configuration record for an issuer follows:
 
 .. code-block:: bash
 
-    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails/sync; pipenv run python multisync.py 20 /home/operator/.indy_client/tails 192.168.56.119 8808 issuer >> /home/operator/von_tails/log/anchor-sync.$(date +\%Y-\%m-\%d).log 2>&1'
+    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails; pipenv run python multisync.py 20 /home/operator/von_tails/config/issuer.ini >> /home/operator/von_tails/log/anchor-sync.$(date +\%Y-\%m-\%d).log 2>&1'
 
 and for a holder-prover:
 
 .. code-block:: bash
 
-    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails/sync; pipenv run python multisync.py 20 /home/operator/.indy_client/tails 192.168.56.119 8808 prover >> /home/operator/von_tails/log/anchor-sync.$(date +\%Y-\%m-\%d).log 2>&1'
+    * * * * * /bin/bash -l -c 'export PIPENV_MAX_DEPTH=16; cd /home/operator/von_tails; pipenv run python multisync.py 20 /home/operator/von_tails/config/prover.ini >> /home/operator/von_tails/log/anchor-sync.$(date +\%Y-\%m-\%d).log 2>&1'
 
-where both direct logs to rotating file dated daily.
+where both direct logs to daily rotating file.

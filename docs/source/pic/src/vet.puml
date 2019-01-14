@@ -1,0 +1,80 @@
+@startuml
+/'
+Copyright 2017-2019 Government of Canada - Public Services and Procurement Canada - buyandsell.gc.ca
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+'/
+
+skinparam ParticipantPadding 20
+skinparam BoxPadding 20
+
+title Tails Server Vetting
+
+box "Indy" #LightBlue
+    participant "Ledger" as ledger
+endbox
+
+box "Issuer" #Seashell
+    participant "Sync Script" as sync
+    participant "VON Anchor" as ian
+endbox
+
+box "Tails Server" #Seashell
+    participant "Tails Server" as tsrv
+    participant "Admin Delete Script" as adel
+    participant "VON Anchor" as tsan
+endbox
+
+actor Actuator as ator
+
+=== ON UPLOADING TAILS FILE ==
+
+note over sync, tsrv
+    With local-only tails file that configured VON anchor issued
+endnote
+
+sync -> ian: sign: <epoch>||<tails>
+ian -> sync: signature
+sync -> tsrv: POST tails file, signature to tails/<rr_id>/<epoch>
+
+tsrv -> tsrv: <rr_id> valid? (Yes)
+tsrv -> tsrv: <epoch> within configured OK clock skew? (Yes)
+tsrv -> tsrv: tails file name is OK hash? (Yes)
+tsrv -> tsrv: tails file is new to server? (Yes)
+tsrv -> tsrv: signature validates, from issuer DID in <rr_id>? (Yes)
+tsrv -> ledger: get rev reg def for <rr_id>
+ledger -> tsrv: rev reg def
+tsrv -> tsrv: tails hash matches tails file name? (Yes)
+tsrv -> tsrv: write tails file to server
+
+tsrv -> sync: OK
+
+=== ON DELETING TAILS FILES ==
+
+ator -> tsrv: audit
+tsrv -> ator: suspect content on <ident>
+ator -> adel: delete on <ident>
+
+note over sync, tsrv
+    <ident> specifies 'all', or else issuer DID, cred def id, or rev reg id
+endnote
+
+adel -> tsan: sign: <epoch>||<ident>
+tsan -> adel: signature
+adel -> tsrv: DELETE signature to <ident>/<epoch>
+
+tsrv -> tsrv: <epoch> within configured OK clock skew? (Yes)
+tsrv -> tsrv: signature validates, from tails server anchor? (Yes)
+tsrv -> tsrv: delete specified tails files
+
+tsrv -> adel: OK
