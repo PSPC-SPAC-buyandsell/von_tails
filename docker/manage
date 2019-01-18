@@ -174,7 +174,6 @@ case "${COMMAND}" in
     start)
         DC_ARGS=$(get_dc_args up $@)
         configure_env $@
-        echo ">> docker-compose ${DC_ARGS}"
         docker-compose ${DC_ARGS}
         ;;
     stop)

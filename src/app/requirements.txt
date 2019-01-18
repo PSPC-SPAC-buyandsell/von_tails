@@ -1,4 +1,4 @@
 sanic>=0.8.3
 aiocache>=0.10.1
 python3-indy==1.7.0-dev-933
-von_anchor==1.7.6
+von_anchor==1.7.7

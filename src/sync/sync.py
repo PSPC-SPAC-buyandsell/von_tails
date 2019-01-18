@@ -302,7 +302,6 @@ async def main(profile: Profile, pool: NodePool, noman: NominalAnchor) -> None:
     port = config['Tails Server']['port']
 
     dir_tails = config['Tails Client']['tails.dir']
-
     if isdir(dir_tails) and port.isdigit():
         port = int(port)
         try:

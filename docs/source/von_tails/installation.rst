@@ -94,7 +94,7 @@ The operator edits the configuration file to fit the operating environment as pe
 At a minimum, the operator must supply bona fide values for:
 
 * the genesis transaction path to bootstrap the indy pool.
-* the issuer VON anchor seed and wallet particulars.
+* the issuer VON anchor's seed and wallet particulars.
 
 Holder-Prover Anchor Host
 -------------------------
@@ -116,7 +116,10 @@ Tails Server Host
 
 On the tails server host, the operator locates and edit configuration file ``von_tails/src/admin/config/admin.ini`` to fit the operating environment as per :ref:`sync-config`; its VON anchor is the tails server anchor.
 
-At a minimum, the operator must supply a bona fide value for the genesis transaction path to bootstrap the indy pool.
+At a minimum, the operator must supply bona fide values for:
+
+* the genesis transaction path to bootstrap the indy pool
+* the tails server VON anchor's seed and wallet parameters.
 
 .. _venv:
 

@@ -19,7 +19,7 @@ services:
             dockerfile: docker/von_tails.dockerfile
             args:
               - TEST_POOL_IP=${TEST_POOL_IP:-10.0.0.2}
-              - INDY_POOL_NAME=pool1
+              - INDY_POOL_NAME=${INDY_POOL_NAME:-pool1}
               - TAILS_SERVER_SEED=${TAILS_SERVER_SEED:-00000000000000000000TailsServer1}
         depends_on:
             - indy_pool
