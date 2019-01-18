@@ -14,6 +14,16 @@ To download the project to a host, the operator issues:
 
 at the command prompt. This creates a ``von_tails`` installation directory in place with the software for the tails file server and syncronization scripts.
 
+Check Default Server Configuration
+==================================
+
+The operator opens file ``src/app/config/config.ini`` from the ``von_tails`` installation directory, adjusting values as need be to fit the environment:
+
+* maximum tails file clock skew allowance, in seconds
+* trustee anchor seed and wallet particulars
+
+before saving the file. 
+
 Build Tails File Server
 ==============================
 
@@ -48,6 +58,8 @@ The operator creates directories to hold scripts, logs, and configuration on iss
 
 to prepare the directory structure with all components to run as ``operator`` on the host.
 
+.. _deploy-src-reqs:
+
 Deploy Source and Requirements Specifications
 +++++++++++++++++++++++++++++++++++++++++++++
 
@@ -61,8 +73,8 @@ The operator copies the ``*.py`` scripts and ``requirements.txt`` files from the
 
 to deploy source and requirements specification files.
 
-Deploy and Edit Configuration
-+++++++++++++++++++++++++++++
+Adjust Tails Client Configuration
++++++++++++++++++++++++++++++++++
 
 This section details the configuration process for tails clients.
 
@@ -79,6 +91,11 @@ In particular, on a host running an issuer VON anchor, the operator issues:
 
 The operator edits the configuration file to fit the operating environment as per :ref:`sync-config`.
 
+At a minimum, the operator must supply bona fide values for:
+
+* the genesis transaction path to bootstrap the indy pool.
+* the issuer VON anchor seed and wallet particulars.
+
 Holder-Prover Anchor Host
 -------------------------
 
@@ -92,26 +109,48 @@ On a host running a holder-prover VON anchor, the operator issues instead:
 
 The operator edits the configuration file to fit the operating environment as per :ref:`sync-config`.
 
+At a minimum, the operator must supply a bona fide value for the holder-prover VON anchor's tails directory.
+
 Tails Server Host
 -----------------
 
 On the tails server host, the operator locates and edit configuration file ``von_tails/src/admin/config/admin.ini`` to fit the operating environment as per :ref:`sync-config`; its VON anchor is the tails server anchor.
+
+At a minimum, the operator must supply a bona fide value for the genesis transaction path to bootstrap the indy pool.
 
 .. _venv:
 
 Prepare Virtual Environment
 ===========================
 
-On the issuer and holder-prover anchor tails client hosts, the operator ensures that the ``pipenv`` virtual environment includes required packages. For example,
+This section outlines the process preparing the virtual environment on tails client hosts.
+
+Issuer and Holder-Prover Hosts
+++++++++++++++++++++++++++++++
+
+On the issuer and holder-prover tails client hosts, the operator ensures that the virtual environment includes required packages as the ``requirements.txt`` copied as per :ref:`deploy-src-reqs` specifies. For example, the sequence:
 
 .. code-block:: bash
 
     $ cd /home/operator/von_tails
     $ pipenv install -r requirements.txt
 
-to apply the requirements if the operator installed the ``src/sync/`` directory in the ``/home/operator/von_tails/`` location as per :ref:`deploy`.
+could prepare the virtual environment for synchronization if the operator installed the ``src/sync/`` directory in the ``/home/operator/von_tails/`` location as per :ref:`deploy`.
 
-.. _integrate_cron:
+Tails Server Host
++++++++++++++++++
+
+On the tails server host, the operator ensures that the virtual environment includes required packages as ``src/admin/requirements.txt`` specifies in the ``von_tails`` distribution. For example, the sequence:
+
+.. code-block:: bash
+
+    $ cd /home/operator
+    $ cd von_tails/src/admin
+    $ pipenv install -r requirements.txt
+
+could prepare the virtual environment for the administrative deletion script for a tails server with VON tails deployed to directory ``/home/operator/von_tails``.
+
+.. _integrate-cron:
 
 Integrate with cron
 ===================

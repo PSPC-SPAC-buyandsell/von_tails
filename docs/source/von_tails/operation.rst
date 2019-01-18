@@ -64,19 +64,18 @@ Synchronization Scripts
 
 Script ``src/sync.py`` performs one iteration of the synchronization process. An operator may call this script for a one-time manual synchronization operation. Its command line arguments represent:
 
-- the topmost tails directory for the VON anchor
-- the tails server hostname or IP address
-- the tails server port
-- the synchronization role:
-
-  - ``issuer`` to upload local-only tails files from within the tails directory to the server
-  - ``prover`` to download remote-only tails files from the server to the tails directory.
+* the topmost tails directory for the VON anchor
+* the tails server hostname or IP address
+* the tails server port
+* the synchronization role:
+    - ``issuer`` to upload local-only tails files from within the tails directory to the server
+    - ``prover`` to download remote-only tails files from the server to the tails directory.
 
 Script ``src/multisync.py`` performs several iterations of the synchronization process, spaced evenly over a single minute: the number of such iterations appears as the first parameter, preceding those that it passes to the src/sync.py script.
 
 A new iteration of the synchronization process only starts if one is not already running – typical operation will not overlap iterations.
 
-This script's intended use is integration via cron, as per :ref:`integrate_cron`.
+This script's intended use is integration via cron, as per :ref:`integrate-cron`.
 
 
 .. _sync-config:
@@ -87,24 +86,21 @@ Configuration
 These scripts take a ``.ini``-style configuration file with the following content:
 
 * section ``[Tails Server]``, specifying:
-
-    * ``host``: the hostname or address of the tails server
-    * ``port``: the port on which the tails server listens
-
+    - ``host``: the hostname or address of the tails server
+    - ``port``: the port on which the tails server listens
 * section ``[Tails Client]``, specifying:
-
-    * ``profile``: ``issuer`` to upload or ``prover`` to download
-    * ``tails.dir``: the location of the top of the tails directory on the client host
-
+    - ``profile``: ``issuer`` to upload or ``prover`` to download
+    - ``tails.dir``: the location of the top of the tails directory on the client host
 * (for issuers only) section ``[Node Pool]``, specifying:
-    * ``name``: the name of the node pool
-    * ``genesis.txn.path``: the path to the file with the node pool's genesis transactions
-
+    - ``name``: the name of the node pool
+    - ``genesis.txn.path``: the path to the file with the node pool's genesis transactions (may omit if node pool already exists)
 * (for issuers only) section ``[VON Anchor]``, specifying:
-    * ``seed``: the seed for the (issuer) VON anchor
-    * ``wallet.name``: the name of the wallet
-    * ``wallet.type``: the wallet type (defaults to indy-sdk default)
-    * ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).
+    - ``seed``: the seed for the (issuer) VON anchor (omit if wallet already exists)
+    - ``wallet.name``: the name of the wallet
+    - ``wallet.type``: the wallet type (defaults to indy-sdk default)
+    - ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).
+
+The VON Tails client scripts interpolate environment variables from these configuration files, but it may be more straightforward to set values directly (e.g., ``${HOST_PORT}``, ``${TAILS_SERVER_SEED}``).
 
 Administrative Deletion Script
 ------------------------------
@@ -122,16 +118,13 @@ Configuration
 The script takes a ``.ini``-style configuration file with the following content:
 
 * section ``[Tails Server]``, specifying:
-
-    * ``host``: the hostname or address of the tails server
-    * ``port``: the port on which the tails server listens
-
+    - ``host``: the hostname or address of the tails server
+    - ``port``: the port on which the tails server listens
 * section ``[Node Pool]``, specifying:
-    * ``name``: the name of the node pool
-    * ``genesis.txn.path``: the path to the file with the node pool's genesis transactions
-
+    - ``name``: the name of the node pool
+    - ``genesis.txn.path``: the path to the file with the node pool's genesis transactions (may omit if node pool already exists)
 * section ``[VON Anchor]``, specifying:
-    * ``seed``: the seed for the tails server VON anchor
-    * ``wallet.name``: the name of the wallet
-    * ``wallet.type``: the wallet type (defaults to indy-sdk default)
-    * ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).
+    - ``seed``: the seed for the tails server VON anchor (omit if wallet already exists)
+    - ``wallet.name``: the name of the wallet
+    - ``wallet.type``: the wallet type (defaults to indy-sdk default)
+    - ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).

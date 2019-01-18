@@ -29,6 +29,9 @@ RUN  apt-get update \
         libssl-dev \
         libsqlite3-dev \
         libsodium-dev \
+        libkrb5-dev \
+        libpgm-dev \
+        libnorm-dev \
         libzmq3-dev \
         python3.6 \
         python3.6-dev \
@@ -39,9 +42,7 @@ RUN  apt-get update \
         libtool \
         autoconf \
         automake \
-        uuid-dev \
-        telnet \
-        vim
+        uuid-dev
 
 ADD docker/libindy.so.tgz /usr/lib
 RUN chown root:root /usr/lib/libindy.so

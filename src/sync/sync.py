@@ -31,10 +31,12 @@ from urllib.parse import quote
 import requests
 from requests.exceptions import ConnectionError
 
+from indy.error import IndyError
 from von_anchor import NominalAnchor
-from von_anchor.nodepool import NodePool
+from von_anchor.error import ExtantWallet
 from von_anchor.frill import do_wait, inis2dict, ppjson
 from von_anchor.indytween import Role
+from von_anchor.nodepool import NodePool
 from von_anchor.tails import Tails
 from von_anchor.util import AnchorData, NodePoolData, ok_rev_reg_id
 from von_anchor.wallet import Wallet
@@ -92,9 +94,9 @@ def usage() -> None:
     print('  * (issuer only) section [Node Pool]:')
     print('    - name: the name of the node pool to which the operation applies')
     print('    - genesis.txn.path: the path to the genesis transaction file')
-    print('        for the node pool')
+    print('        for the node pool (may omit if pool already exists)')
     print('  * (issuer only) section [VON Anchor], pertaining to the issuer VON anchor:')
-    print("    - seed: the VON anchor's seed")
+    print("    - seed: the VON anchor's seed (omit if wallet exists)")
     print("    - wallet.name: the VON anchor's wallet name")
     print("    - wallet.type: (default blank) the VON anchor's wallet type")
     print("    - wallet.key: (default blank) the VON anchor's")
@@ -219,7 +221,7 @@ async def setup(ini_path: str) -> tuple:
     then register both for shutdown at program exit.
 
     :param ini_path: path to configuration file
-    :return: tuple with profile, open node pool and issuer anchor; (None, None) for prover.
+    :return: tuple with profile, open node pool and issuer anchor; (profile, None, None) for prover.
     """
 
     global config
@@ -229,25 +231,36 @@ async def setup(ini_path: str) -> tuple:
     if profile != Profile.ISSUER:
         return (profile, None, None)
 
-    pool_data = NodePoolData(config['Node Pool']['name'], config['Node Pool']['genesis.txn.path'])
+    pool_data = NodePoolData(
+        config['Node Pool']['name'],
+        config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
     pool = NodePool(pool_data.name, pool_data.genesis_txn_path)
     await pool.open()
     atexit.register(close_pool, pool)
 
     noman_data = AnchorData(
         Role.USER,
-        config['VON Anchor']['seed'],
+        config['VON Anchor'].get('seed', None) or None,
         config['VON Anchor']['wallet.name'],
-        config['VON Anchor'].get('wallet.type', None) or None,  # nudge empty value from '' to None
+        config['VON Anchor'].get('wallet.type', None) or None,
         config['VON Anchor'].get('wallet.key', None) or None)
-    noman = NominalAnchor(
-        await Wallet(
-            noman_data.seed,
-            noman_data.wallet_name,
-            noman_data.wallet_type,
-            None,
-            {'key': noman_data.wallet_key} if noman_data.wallet_key else None).create(),
-        pool)
+
+    wallet = Wallet(
+        noman_data.wallet_name,
+        noman_data.wallet_type,
+        None,
+        {'key': noman_data.wallet_key} if noman_data.wallet_key else None)
+
+    if noman_data.seed:
+        try:
+            await wallet.create(noman_data.seed)
+            logging.info('Created wallet {}'.format(noman_data.wallet_name))
+        except ExtantWallet:
+            logging.warning('Wallet {} already exists: remove seed from configuration file {}'.format(
+                noman_data.wallet_name,
+                ini_path))
+
+    noman = NominalAnchor(wallet, pool)
     await noman.open()
     atexit.register(close_anchor, noman)
 
@@ -327,5 +340,5 @@ if __name__ == '__main__':
         (profile, pool, noman) = do_wait(setup(sys.argv[1]))
         if profile:
             do_wait(main(profile, pool, noman))
-        else:
+        elif pool:
             logging.error('Configured tails client profile must be issuer or prover.')

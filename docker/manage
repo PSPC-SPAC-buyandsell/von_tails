@@ -82,7 +82,7 @@ get_dc_args() {
 
     if [ "${COMMAND}" == "start" ]
     then
-        ARGS+="--force-recreate"
+        ARGS+="--force-recreate --abort-on-container-exit"
     fi
 
     for ARG in $@
@@ -144,15 +144,17 @@ build() {
     if [ "${RM_LIBINDY}" -ne "0" ]
     then
         rm -rf "${SCRIPT_HOME}/libindy.so.tgz"
+        echo "Replaced ${SCRIPT_HOME}/libindy.so.tgz"
     else
-        echo "Retaining '${SCRIPT_HOME}/libindy.so.tgz'"
+        echo "Retained ${SCRIPT_HOME}/libindy.so.tgz"
     fi
 
     if [ "${RM_INDY_POOL_DF}" -ne "0" ]
     then
         rm -rf "${SCRIPT_HOME}/indy-pool.dockerfile"
+        echo "Replaced ${SCRIPT_HOME}/indy-pool.dockerfile"
     else
-        echo "Retaining '${SCRIPT_HOME}/indy-pool.dockerfile"
+        echo "Retained ${SCRIPT_HOME}/indy-pool.dockerfile"
     fi
 }
 
@@ -172,6 +174,7 @@ case "${COMMAND}" in
     start)
         DC_ARGS=$(get_dc_args up $@)
         configure_env $@
+        echo ">> docker-compose ${DC_ARGS}"
         docker-compose ${DC_ARGS}
         ;;
     stop)

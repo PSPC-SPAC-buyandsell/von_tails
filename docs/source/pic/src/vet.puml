@@ -57,12 +57,12 @@ ledger -> tsrv: rev reg def
 tsrv -> tsrv: tails hash matches tails file name? (Yes)
 tsrv -> tsrv: write tails file to server
 
-tsrv -> sync: OK
+tsrv --> sync: OK
 
 === ON DELETING TAILS FILES ==
 
 ator -> tsrv: audit
-tsrv -> ator: suspect content on <ident>
+tsrv --> ator: suspect content on <ident>
 ator -> adel: delete on <ident>
 
 note over sync, tsrv
@@ -77,4 +77,5 @@ tsrv -> tsrv: <epoch> within configured OK clock skew? (Yes)
 tsrv -> tsrv: signature validates, from tails server anchor? (Yes)
 tsrv -> tsrv: delete specified tails files
 
-tsrv -> adel: OK
+tsrv --> adel: OK
+adel --> ator: OK

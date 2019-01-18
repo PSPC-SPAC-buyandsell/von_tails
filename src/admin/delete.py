@@ -29,6 +29,7 @@ import requests
 from requests.exceptions import ConnectionError
 
 from von_anchor import NominalAnchor
+from von_anchor.error import ExtantWallet
 from von_anchor.frill import do_wait, inis2dict
 from von_anchor.indytween import Role
 from von_anchor.nodepool import NodePool
@@ -61,9 +62,9 @@ def usage() -> None:
     print('  * section [Node Pool]:')
     print('    - name: the name of the node pool to which the operation applies')
     print('    - genesis.txn.path: the path to the genesis transaction file')
-    print('        for the node pool')
+    print('        for the node pool (may omit if pool already exists)')
     print('  * section [VON Anchor], pertaining to the tails server VON anchor:')
-    print("    - seed: the VON anchor's seed")
+    print("    - seed: the VON anchor's seed (omit if wallet exists)")
     print("    - wallet.name: the VON anchor's wallet name")
     print("    - wallet.type: (default blank) the VON anchor's wallet type")
     print("    - wallet.key: (default blank) the VON anchor's")
@@ -82,23 +83,33 @@ async def admin_delete(ini_path: str, ident: str) -> int:
     """
 
     config = inis2dict(ini_path)
-    pool_data = NodePoolData(config['Node Pool']['name'], config['Node Pool']['genesis.txn.path'])
+    pool_data = NodePoolData(
+        config['Node Pool']['name'],
+        config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
     tsan_data = AnchorData(
         Role.USER,
-        config['VON Anchor']['seed'],
+        config['VON Anchor'].get('seed', None) or None,
         config['VON Anchor']['wallet.name'],
-        config['VON Anchor'].get('wallet.type', None) or None,  # nudge empty value from '' to None
+        config['VON Anchor'].get('wallet.type', None) or None,
         config['VON Anchor'].get('wallet.key', None) or None)
 
-    async with NodePool(pool_data.name, pool_data.genesis_txn_path) as pool, (
-        NominalAnchor(
-            await Wallet(
-                tsan_data.seed,
+    wallet = Wallet(
+        tsan_data.wallet_name,
+        tsan_data.wallet_type,
+        None,
+        {'key': tsan_data.wallet_key} if tsan_data.wallet_key else None)
+
+    if tsan_data.seed:
+        try:
+            await wallet.create(tsan_data.seed)
+            logging.info('Created wallet {}'.format(tsan_data.wallet_name))
+        except ExtantWallet:
+            logging.warning('Wallet {} already exists: remove seed from configuration file {}'.format(
                 tsan_data.wallet_name,
-                tsan_data.wallet_type,
-                None,
-                {'key': tsan_data.wallet_key} if tsan_data.wallet_key else None).create(),
-            pool)) as noman:
+                ini_path))
+
+    async with NodePool(pool_data.name, pool_data.genesis_txn_path) as pool, (
+            NominalAnchor(wallet, pool)) as noman:
 
         host = config['Tails Server']['host']
         port = config['Tails Server']['port']

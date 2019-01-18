@@ -23,4 +23,11 @@ export TEST_POOL_IP=${TEST_POOL_IP:-10.0.0.2}
 
 cd "${HOME}"/src
 von_anchor_setnym app/config/config.ini
-python -m sanic app.app --host=${HOST_IP} --port=${HOST_PORT}
+RV=$?
+if [ "${RV}" -eq "0" ]
+then
+    python -m sanic app.app --host=${HOST_IP} --port=${HOST_PORT}
+else
+    echo "FATAL: Could not set VON Tails anchor cryptonym on ledger"
+fi
+exit ${RV}

@@ -20,12 +20,14 @@ import logging
 
 from os.path import dirname, join, realpath
 
-from von_anchor import NominalAnchor, TrusteeAnchor
-from von_anchor.frill import do_wait
-from von_anchor.nodepool import NodePool
-from von_anchor.wallet import Wallet
-
 from app.cache import MEM_CACHE
+from von_anchor import NominalAnchor, TrusteeAnchor
+from von_anchor.error import ExtantWallet
+from von_anchor.frill import do_wait
+from von_anchor.indytween import Role
+from von_anchor.nodepool import NodePool
+from von_anchor.util import AnchorData, NodePoolData
+from von_anchor.wallet import Wallet
 
 
 LOGGER = logging.getLogger(__name__)
@@ -37,28 +39,40 @@ def boot() -> None:
     """
 
     config = do_wait(MEM_CACHE.get('config'))
-    pool_name = config['Node Pool']['name']
-    genesis_txn_path = config['Node Pool']['genesis.txn.path']
 
-    pool = NodePool(pool_name, genesis_txn_path)
+    pool_data = NodePoolData(
+        config['Node Pool']['name'],
+        config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
+    pool = NodePool(pool_data.name, pool_data.genesis_txn_path)
     do_wait(pool.open())
     assert pool.handle
     do_wait(MEM_CACHE.set('pool', pool))
 
     # instantiate tails server anchor
-    ts_seed = config['VON Anchor']['seed']
-    ts_wallet_name = config['VON Anchor']['wallet.name']
-    ts_wallet_type = config['VON Anchor'].get('wallet.type', None) or None  # nudge empty value from '' to None
-    ts_wallet_key = config['VON Anchor'].get('wallet.key', None) or None
-    tsan = NominalAnchor(
-        do_wait(Wallet(
-            ts_seed,
-            ts_wallet_name,
-            ts_wallet_type,
-            None,
-            {'key': ts_wallet_key} if ts_wallet_key else None).create()),
-        pool)
+    tsan_data = AnchorData(
+        Role.USER,
+        config['VON Anchor'].get('seed', None) or None,
+        config['VON Anchor']['wallet.name'],
+        config['VON Anchor'].get('wallet.type', None) or None,
+        config['VON Anchor'].get('wallet.key', None) or None)
+
+    wallet = Wallet(
+        tsan_data.wallet_name,
+        tsan_data.wallet_type,
+        None,
+        {'key': tsan_data.wallet_key} if tsan_data.wallet_key else None)
+
+    if tsan_data.seed:
+        try:
+            do_wait(wallet.create(tsan_data.seed))
+            LOGGER.info('Created wallet {}'.format(tsan_data.wallet_name))
+        except ExtantWallet:
+            LOGGER.warning('Wallet {} already exists: remove seed from config file'.format(tsan_data.wallet_name))
+
+    tsan = NominalAnchor(wallet, pool)
     do_wait(tsan.open())
     assert tsan.did
+    if not json.loads(do_wait(tsan.get_nym())):
+        LOGGER.error('Anchor {} has no cryptonym on the ledger'.format(tsan_data.wallet_name))
 
     do_wait(MEM_CACHE.set('tsan', tsan))
