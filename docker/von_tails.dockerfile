@@ -17,7 +17,10 @@ ENV LC_ALL=C.UTF-8 \
     RUST_LOG=error \
     TEST_POOL_IP=${TEST_POOL_IP:-10.0.0.2} \
     HOST_IP=0.0.0.0
-RUN  apt-get update \
+RUN apt-get clean \
+    && rm -r /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get update \
     && apt-get install -y software-properties-common python-software-properties \
     && add-apt-repository -y ppa:ondrej/php \
     && add-apt-repository -y ppa:deadsnakes/ppa \
@@ -33,6 +36,7 @@ RUN  apt-get update \
         libpgm-dev \
         libnorm-dev \
         libzmq3-dev \
+        libncursesw5-dev \
         python3.6 \
         python3.6-dev \
         python3-pip \

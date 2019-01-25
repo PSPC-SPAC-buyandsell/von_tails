@@ -260,6 +260,7 @@ async def setup(ini_path: str) -> tuple:
                 noman_data.wallet_name,
                 ini_path))
 
+    await wallet.open()
     noman = NominalAnchor(wallet, pool)
     await noman.open()
     atexit.register(close_anchor, noman)
@@ -284,6 +285,7 @@ def close_anchor(anchor: NominalAnchor) -> None:
     :param anchor: anchor to close
     """
 
+    do_wait(anchor.wallet.close())
     do_wait(anchor.close())
 
 

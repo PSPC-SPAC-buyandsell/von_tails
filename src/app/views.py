@@ -182,8 +182,9 @@ async def list_tails(request: Request, ident: str) -> HTTPResponse:
 
     if ident == 'all':  # list everything: 'all' is not valid base58 so it can't be any case below
         rv = [basename(link) for link in Tails.links(dir_tails)]
-    elif ok_rev_reg_id(ident) and Tails.linked(dir_tails, ident):  # it's a rev reg id
-        rv = [ident]
+    elif ok_rev_reg_id(ident):  # it's a rev reg id
+        if Tails.linked(dir_tails, ident):
+            rv = [ident]
     elif ok_cred_def_id(ident):  # it's a cred def id (starts with issuer DID)
         rv = [basename(link) for link in Tails.links(dir_tails, ident.split(':')[0])
             if rev_reg_id2cred_def_id(basename(link)) == ident]

@@ -18,8 +18,3 @@ Synchronization Script Granularity
 ====================================
 
 At present, the issuer synchronization process selects for tails files corresponding to revocation registries that the issuer anchor built. Operating as a prover profile, synchronization scripts operate on the entire tails directory structure, and download all tails files at the server. Not all holder-provers may be interested in tails file updates from all issuers using a tails file server.
-
-Unit Tests
-====================================
-
-At present, there are no formal unit tests included. A full test suite should engage all tails server API calls to ensure correct processing in all possible tails directory states.

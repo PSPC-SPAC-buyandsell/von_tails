@@ -69,6 +69,7 @@ def boot() -> None:
         except ExtantWallet:
             LOGGER.warning('Wallet {} already exists: remove seed from config file'.format(tsan_data.wallet_name))
 
+    do_wait(wallet.open())
     tsan = NominalAnchor(wallet, pool)
     do_wait(tsan.open())
     assert tsan.did

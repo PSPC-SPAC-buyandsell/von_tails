@@ -13,6 +13,7 @@
    von_tails/installation.rst
    von_tails/operation.rst
    von_tails/deficiencies.rst
+   von_tails/unit-tests.rst
    modules.rst
 
 Indices and tables

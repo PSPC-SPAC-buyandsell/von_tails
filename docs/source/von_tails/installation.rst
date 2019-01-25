@@ -17,12 +17,22 @@ at the command prompt. This creates a ``von_tails`` installation directory in pl
 Check Default Server Configuration
 ==================================
 
-The operator opens file ``src/app/config/config.ini`` from the ``von_tails`` installation directory, adjusting values as need be to fit the environment:
+The operator opens file ``docker/docker-compose.yml`` from the ``von_tails`` installation directory, specifying configuration values in
+
+* ``von_tails:build:args``
+* ``von_tails:environment``
+* ``von_tails:ports``
+
+to inform the docker build and operation of the tails server. Where specified as bash variables ``${}``, recall that docker takes such values from the host operating system at docker build time, with defaults between the ``:-`` and the closing right brace.
+
+From the ``src/app/config/config.ini`` from the ``von_tails`` installation directory, adjusting values as need be to fit the environment:
 
 * maximum tails file clock skew allowance, in seconds
-* trustee anchor seed and wallet particulars
+* wallet particulars
 
-before saving the file. 
+before saving the file. Note that the docker build process replaces ``${INDY_POOL_NAME}`` and ``${TAILS_SERVER_SEED}`` values with their ``von_tails:build:args`` specifications in ``docker/docker-compose.yml``.
+
+.. _build-tails-server:
 
 Build Tails File Server
 ==============================

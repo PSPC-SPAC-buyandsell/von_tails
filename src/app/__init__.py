@@ -37,6 +37,7 @@ set_config()
 async def cleanup(app, loop):
     tsan = await MEM_CACHE.get('tsan')
     if tsan is not None:
+        await tsan.wallet.close()
         await tsan.close()
 
     pool = await MEM_CACHE.get('pool')

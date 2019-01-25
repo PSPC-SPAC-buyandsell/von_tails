@@ -108,7 +108,8 @@ async def admin_delete(ini_path: str, ident: str) -> int:
                 tsan_data.wallet_name,
                 ini_path))
 
-    async with NodePool(pool_data.name, pool_data.genesis_txn_path) as pool, (
+    async with wallet, (
+            NodePool(pool_data.name, pool_data.genesis_txn_path)) as pool, (
             NominalAnchor(wallet, pool)) as noman:
 
         host = config['Tails Server']['host']
