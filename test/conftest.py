@@ -197,7 +197,8 @@ def path_cli_ini(path_temp):
 
     res = {
         'issuer': Path(path_temp).joinpath('issuer.ini'),
-        'prover': Path(path_temp).joinpath('prover.ini')
+        'prover': Path(path_temp).joinpath('prover.ini'),
+        'admin': Path(path_temp).joinpath('admin.ini')
     }
 
     logger.debug('path_cli_ini: <<< res: %r', res)
@@ -243,6 +244,23 @@ def cli_ini(path_cli_ini, host_port, path_home, path_temp, pool_name, seed, gene
                 '[Tails Client]',
                 'profile=prover',
                 'tails.dir={}'.format(Path(path_temp).joinpath('tails-prover'))
+            ])
+        },
+        'admin': {
+            '\n'.join([
+                '[Tails Server]',
+                'host=localhost',
+                'port={}'.format(host_port),
+                '',
+                '[Node Pool]',
+                'name={}'.format(pool_name),
+                'genesis.txn.path={}'.format(genesis_txn_path),
+                '',
+                '[VON Anchor]',
+                'seed=${TAILS_SERVER_SEED:-00000000000000000000TailsServer1}',
+                'wallet.name=tails-server',
+                'wallet.type=',
+                'wallet.key='
             ])
         }
     }

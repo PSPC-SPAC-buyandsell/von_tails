@@ -139,10 +139,10 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
     config = {}
     i = 0
     for profile in path_cli_ini:
-        cli_cfg = inis2dict(str(path_cli_ini[profile]))
-        config[profile] = cli_cfg
-        with open(path_cli_ini[profile], 'r') as cfg_fh:
-            print('\n\n== 0.{} == {} synchronization configuration:\n{}'.format(i, profile, cfg_fh.read()))
+        cli_config = inis2dict(str(path_cli_ini[profile]))
+        config[profile] = cli_config
+        with open(path_cli_ini[profile], 'r') as fh_cfg:
+            print('\n\n== 0.{} == {} tails sync configuration:\n{}'.format(i, profile, fh_cfg.read()))
         i += 1
 
     # Start tails server
@@ -157,15 +157,16 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
     print('\n\n== 2 == Started tails server, docker-compose port-forwarded via localhost:{}'.format(tsrv.port))
     atexit.register(shutdown)
 
-    # Set nyms
+    # Set nyms (operation creates pool if need be)
     i = 0
     setnym_config = {}
     for profile in path_setnym_ini:
-        cli_cfg = inis2dict(str(path_setnym_ini[profile]))
-        setnym_config[profile] = cli_cfg
-        with open(path_setnym_ini[profile], 'r') as cfg_fh:
-            print('\n\n== 3.{} == {} setnym configuration:\n{}'.format(i, profile, cfg_fh.read()))
-        # rv = pexpect.run('von_anchor_setnym {}'.format(path_setnym_ini[profile]))
+        cli_config = inis2dict(str(path_setnym_ini[profile]))
+        if profile == 'admin':  # tails server anchor on ledger a priori
+            continue
+        setnym_config[profile] = cli_config
+        with open(path_setnym_ini[profile], 'r') as fh_cfg:
+            print('\n\n== 3.{} == {} setnym configuration:\n{}'.format(i, profile, fh_cfg.read()))
         sub_proc = subprocess.run(
             [
                 'von_anchor_setnym',
@@ -177,16 +178,13 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
         i += 1
     print('\n\n== 4 == Setnym ops completed OK')
 
-    seeds = {
-        setnym_config[profile]['VON Anchor']['wallet.name']: setnym_config[profile]['VON Anchor']['seed']
-            for profile in path_setnym_ini
-    }
     wallets = {profile: Wallet(setnym_config[profile]['VON Anchor']['wallet.name']) for profile in setnym_config}
-    
+    wallets['admin'] = Wallet(config['admin']['VON Anchor']['wallet.name'])
+
     # Open pool and anchors, issue creds to create tails files
     async with wallets['issuer'] as w_issuer, (
             wallets['prover']) as w_prover, (
-            NodePool(config['issuer']['Node Pool']['name'], None, {'auto-remove': False})) as pool, (
+            NodePool(config['issuer']['Node Pool']['name'])) as pool, (
             BCRegistrarAnchor(w_issuer, pool)) as ian, (
             OrgBookAnchor(w_prover, pool)) as pan:
 
@@ -285,7 +283,7 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
         print('\n\n== 10 == All listing views at server come back OK and empty as expected')
 
         rv = pexpect.run('python ../src/sync/sync.py {}'.format(path_cli_ini['issuer']))
-        print('\n\n== 11 == Issuer sync uploaded local tails files ...')
+        print('\n\n== 11 == Issuer sync uploaded local tails files')
 
         for tails_list_path in ('all', ian.did, cd_id):
             url = url_for(tsrv.port, 'tails/list/{}'.format(tails_list_path))
@@ -299,7 +297,22 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
             assert r.json() == [rr_id]  # list with one rr_id should come back
 
         rv = pexpect.run('python ../src/sync/sync.py {}'.format(path_cli_ini['prover']))
-        print('\n\n== 12 == Prover sync downloaded local tails files ...')
+        print('\n\n== 12 == Prover sync downloaded local tails files')
 
         rr_ids_down = {basename(link) for link in Tails.links(config['prover']['Tails Client']['tails.dir'], ian.did)}
         assert rr_ids_down == rr_ids_up
+
+        # Exercise admin-delete
+        rv = pexpect.run('python ../src/admin/delete.py {} all'.format(path_cli_ini['admin']))
+        print('\n\n== 13 == Admin called for deletion at tails server')
+
+        # Check tails server deletion
+        url = url_for(tsrv.port, 'tails/list/all')
+        r = requests.get(url)
+        assert r.status_code == 200
+        assert not r.json()
+        print('\n\n== 14 == All listing views at server come back OK and empty as expected')
+
+        # Remove tails server anchor wallet
+        await wallets['admin'].remove()
+        print('\n\n== 15 == Removed admin (tails server anchor {}) wallet'.format(wallets['admin'].name))

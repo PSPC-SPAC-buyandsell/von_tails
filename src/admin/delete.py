@@ -32,7 +32,7 @@ from von_anchor import NominalAnchor
 from von_anchor.error import ExtantWallet
 from von_anchor.frill import do_wait, inis2dict
 from von_anchor.indytween import Role
-from von_anchor.nodepool import NodePool
+from von_anchor.nodepool import NodePool, NodePoolManager
 from von_anchor.tails import Tails
 from von_anchor.util import AnchorData, NodePoolData
 from von_anchor.wallet import Wallet
@@ -93,6 +93,18 @@ async def admin_delete(ini_path: str, ident: str) -> int:
         config['VON Anchor'].get('wallet.type', None) or None,
         config['VON Anchor'].get('wallet.key', None) or None)
 
+    # Set up node pool ledger config and wallet
+    manager = NodePoolManager()
+    if pool_data.name not in await manager.list():
+        if pool_data.genesis_txn_path:
+            await manager.add_config(pool_data.name, pool_data.genesis_txn_path)
+        else:
+            logging.error(
+                'Node pool %s has no ledger configuration but %s specifies no genesis transaction path',
+                pool_data.name,
+                ini_path)
+            return 1
+    
     wallet = Wallet(
         tsan_data.wallet_name,
         tsan_data.wallet_type,
@@ -109,7 +121,7 @@ async def admin_delete(ini_path: str, ident: str) -> int:
                 ini_path))
 
     async with wallet, (
-            NodePool(pool_data.name, pool_data.genesis_txn_path)) as pool, (
+            manager.get(pool_data.name)) as pool, (
             NominalAnchor(wallet, pool)) as noman:
 
         host = config['Tails Server']['host']

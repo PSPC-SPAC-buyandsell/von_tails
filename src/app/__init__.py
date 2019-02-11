@@ -16,7 +16,10 @@ limitations under the License.
 
 
 from os.path import dirname, join
+
 from sanic import Sanic
+
+from von_anchor.error import AbsentNym, AbsentPool
 
 from app.cache import MEM_CACHE
 from app.cfg import init_logging, set_config
@@ -45,7 +48,10 @@ async def cleanup(app, loop):
         await pool.close()
 
 # start
-boot()
+try:
+    boot()
+except (AbsentNym, AbsentPool) as x:
+    print(str(x))
 
 # load views
 from app import views

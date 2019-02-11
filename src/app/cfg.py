@@ -56,6 +56,7 @@ def set_config() -> dict:
     """
 
     ini_path = join(dirname(realpath(__file__)), 'config', 'config.ini')
+    do_wait(MEM_CACHE.set('config.ini', ini_path))
 
     do_wait(MEM_CACHE.delete('config'))
     do_wait(MEM_CACHE.set('config', inis2dict(ini_path)))

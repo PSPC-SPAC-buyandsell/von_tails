@@ -35,5 +35,6 @@ and ensures that the operation completes successfully. The test, at present,
 * uploads the issuer's local-only tails files
 * lists the tails server content to ensure that it matches the issuer's local-only content
 * downloads tails server content, using the prover profile
-* checks the prover tails directory, to ensure its proper synchronization with the tails server.
+* checks the prover tails directory, to ensure its proper synchronization with the tails server
+* administratively deletes all content from the tails server and ensures its removal
 * tears down the tails server, node pool, and indy artifacts.

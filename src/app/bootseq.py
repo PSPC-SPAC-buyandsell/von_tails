@@ -22,10 +22,10 @@ from os.path import dirname, join, realpath
 
 from app.cache import MEM_CACHE
 from von_anchor import NominalAnchor, TrusteeAnchor
-from von_anchor.error import ExtantWallet
+from von_anchor.error import AbsentNym, AbsentPool, ExtantWallet
 from von_anchor.frill import do_wait
 from von_anchor.indytween import Role
-from von_anchor.nodepool import NodePool
+from von_anchor.nodepool import NodePool, NodePoolManager
 from von_anchor.util import AnchorData, NodePoolData
 from von_anchor.wallet import Wallet
 
@@ -35,17 +35,30 @@ LOGGER = logging.getLogger(__name__)
 
 def boot() -> None:
     """
-    Boot the service: instantiate tails server anchor
+    Boot the service: instantiate tails server anchor. Raise AbsentPool if node pool ledger configuration
+    neither present nor sufficiently specified; raise AbsentNym if tails server anchor nym is not on the ledger.
     """
 
     config = do_wait(MEM_CACHE.get('config'))
 
+    # setup pool and wallet
     pool_data = NodePoolData(
         config['Node Pool']['name'],
         config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
-    pool = NodePool(pool_data.name, pool_data.genesis_txn_path)
+    manager = NodePoolManager()
+    if pool_data.name not in do_wait(manager.list()):
+        if pool_data.genesis_txn_path:
+            manager.add_config(pool_data.name, pool_data.genesis_txn_path)
+        else:
+            LOGGER.debug(   
+                'Node pool %s has no ledger configuration but %s specifies no genesis txn path',
+                do_wait(MEM_CACHE.get('config.ini')),
+                pool_data.name)
+            raise AbsentPool('Node pool {} has no ledger configuration but {} specifies no genesis txn path'.format(
+                pool_data.name))
+
+    pool = manager.get(pool_data.name)
     do_wait(pool.open())
-    assert pool.handle
     do_wait(MEM_CACHE.set('pool', pool))
 
     # instantiate tails server anchor
@@ -65,15 +78,15 @@ def boot() -> None:
     if tsan_data.seed:
         try:
             do_wait(wallet.create(tsan_data.seed))
-            LOGGER.info('Created wallet {}'.format(tsan_data.wallet_name))
+            LOGGER.info('Created wallet %s', tsan_data.wallet_name)
         except ExtantWallet:
-            LOGGER.warning('Wallet {} already exists: remove seed from config file'.format(tsan_data.wallet_name))
+            LOGGER.warning('Wallet %s already exists: remove seed from config file', tsan_data.wallet_name)
 
     do_wait(wallet.open())
     tsan = NominalAnchor(wallet, pool)
     do_wait(tsan.open())
-    assert tsan.did
     if not json.loads(do_wait(tsan.get_nym())):
-        LOGGER.error('Anchor {} has no cryptonym on the ledger'.format(tsan_data.wallet_name))
+        LOGGER.debug('Anchor %s has no cryptonym on ledger %s', tsan_data.wallet_name, pool_data.name)
+        raise AbsentNym('Anchor {} has no cryptonym on ledger {}'.format(tsan_data.wallet_name, pool_data.name))
 
     do_wait(MEM_CACHE.set('tsan', tsan))

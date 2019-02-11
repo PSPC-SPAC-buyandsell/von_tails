@@ -36,7 +36,7 @@ from von_anchor import NominalAnchor
 from von_anchor.error import ExtantWallet
 from von_anchor.frill import do_wait, inis2dict, ppjson
 from von_anchor.indytween import Role
-from von_anchor.nodepool import NodePool
+from von_anchor.nodepool import NodePool, NodePoolManager
 from von_anchor.tails import Tails
 from von_anchor.util import AnchorData, NodePoolData, ok_rev_reg_id
 from von_anchor.wallet import Wallet
@@ -234,7 +234,20 @@ async def setup(ini_path: str) -> tuple:
     pool_data = NodePoolData(
         config['Node Pool']['name'],
         config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
-    pool = NodePool(pool_data.name, pool_data.genesis_txn_path)
+
+    # Set up node pool ledger config and wallet
+    manager = NodePoolManager()
+    if pool_data.name not in await manager.list():
+        if pool_data.genesis_txn_path:
+            await manager.add_config(pool_data.name, pool_data.genesis_txn_path)
+        else:
+            logging.error(
+                'Node pool %s has no ledger configuration but %s specifies no genesis txn path',
+                pool_data.name,
+                ini_path)
+            return 1
+    
+    pool = manager.get(pool_data.name)
     await pool.open()
     atexit.register(close_pool, pool)
 
