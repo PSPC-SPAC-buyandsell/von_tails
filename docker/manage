@@ -117,7 +117,7 @@ _update() {
             RV=1
             cp -p "${PATH_SRC}" "${PATH_DEST}"
         else
-            echo "Error: missing '${PATH_SRC}'; install von_base before von_conx" > /dev/stderr
+            echo "Error: missing '${PATH_SRC}'; install von_base before von_tails" > /dev/stderr
             exit 1
         fi
     fi
@@ -144,17 +144,17 @@ build() {
     if [ "${RM_LIBINDY}" -ne "0" ]
     then
         rm -rf "${SCRIPT_HOME}/libindy.so.tgz"
-        echo "Replaced ${SCRIPT_HOME}/libindy.so.tgz"
+        echo "Used von_base libindy.so.tgz, copied to ${SCRIPT_HOME} for docker build then removed"
     else
-        echo "Retained ${SCRIPT_HOME}/libindy.so.tgz"
+        echo "Used and retained local ${SCRIPT_HOME}/libindy.so.tgz for docker build"
     fi
 
     if [ "${RM_INDY_POOL_DF}" -ne "0" ]
     then
         rm -rf "${SCRIPT_HOME}/indy-pool.dockerfile"
-        echo "Replaced ${SCRIPT_HOME}/indy-pool.dockerfile"
+        echo "Used von_base indy-pool.dockerfile, copied to ${SCRIPT_HOME} for docker build then removed"
     else
-        echo "Retained ${SCRIPT_HOME}/indy-pool.dockerfile"
+        echo "Used and retained local ${SCRIPT_HOME}/indy-pool.dockerfile"
     fi
 }
 

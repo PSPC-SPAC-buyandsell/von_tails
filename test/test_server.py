@@ -297,7 +297,7 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
             assert r.json() == [rr_id]  # list with one rr_id should come back
 
         rv = pexpect.run('python ../src/sync/sync.py {}'.format(path_cli_ini['prover']))
-        print('\n\n== 12 == Prover sync downloaded local tails files')
+        print('\n\n== 12 == Prover sync downloaded remote tails files')
 
         rr_ids_down = {basename(link) for link in Tails.links(config['prover']['Tails Client']['tails.dir'], ian.did)}
         assert rr_ids_down == rr_ids_up
