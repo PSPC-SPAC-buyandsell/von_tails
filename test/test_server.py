@@ -39,7 +39,7 @@ from von_anchor.indytween import SchemaKey
 from von_anchor.nodepool import NodePool
 from von_anchor.tails import Tails
 from von_anchor.util import cred_def_id, schema_id, schema_key
-from von_anchor.wallet import Wallet
+from von_anchor.wallet import Wallet, WalletManager
 
 
 MANAGE = join(dirname(dirname(abspath(__file__))), 'docker', 'manage')
@@ -121,6 +121,32 @@ class TailsServer:
         raise ValueError('Tails server did not start')
 
 
+async def get_wallets(wallet_data, open_all, auto_remove=False):
+    rv = {}
+    w_mgr = WalletManager()
+    for name in wallet_data:
+        w = None
+        creation_data = {'seed', 'did'} & {n for n in wallet_data[name]}  # create for tests when seed or did specifies
+        if creation_data:
+            config = {
+                'id': name,
+                **{k: wallet_data[name][k] for k in creation_data},
+                'auto_remove': auto_remove
+            }
+            w = await w_mgr.create(
+                config,
+                access=wallet_data[name]['wallet.access'],
+                replace=True)
+        else:
+            w = await w_mgr.get({'id': name, 'auto_remove': auto_remove}, access=wallet_data[name]['wallet.access'])
+        if open_all:
+            await w.open()
+        assert w.did
+        assert w.verkey
+        rv[name] = w
+    return rv
+
+
 def get_post_response(port, msg_type, args, rc_http=200):
     assert all(isinstance(x, str) for x in args)
     url = url_for(port, msg_type)
@@ -131,7 +157,7 @@ def get_post_response(port, msg_type, args, rc_http=200):
 
 @pytest.mark.skipif(False, reason='short-circuiting')
 @pytest.mark.asyncio
-async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym_ini):
+async def test_von_tails(pool_ip, genesis_txn_file, path_cli_ini, cli_ini, path_setnym_ini, setnym_ini):
 
     print(Ink.YELLOW('\n\n== Testing tails server vs. IP {} =='.format(pool_ip)))
 
@@ -178,8 +204,14 @@ async def test_von_tails(pool_ip, path_cli_ini, cli_ini, path_setnym_ini, setnym
         i += 1
     print('\n\n== 4 == Setnym ops completed OK')
 
-    wallets = {profile: Wallet(setnym_config[profile]['VON Anchor']['wallet.name']) for profile in setnym_config}
-    wallets['admin'] = Wallet(config['admin']['VON Anchor']['wallet.name'])
+    # wallets = {profile: Wallet(setnym_config[profile]['VON Anchor']['name']) for profile in setnym_config}
+    # wallets['admin'] = Wallet(config['admin']['VON Anchor']['name'])
+    wallets = await get_wallets(
+        {
+            **{profile: setnym_config[profile]['VON Anchor'] for profile in setnym_config},
+            'admin': config['admin']['VON Anchor']
+        },
+        open_all=False)
 
     # Open pool and anchors, issue creds to create tails files
     async with wallets['issuer'] as w_issuer, (

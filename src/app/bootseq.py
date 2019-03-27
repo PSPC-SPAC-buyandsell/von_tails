@@ -14,20 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import asyncio
 import json
 import logging
 
-from os.path import dirname, join, realpath
-
-from app.cache import MEM_CACHE
-from von_anchor import NominalAnchor, TrusteeAnchor
+from von_anchor import NominalAnchor
 from von_anchor.error import AbsentNym, AbsentPool, ExtantWallet
 from von_anchor.frill import do_wait
 from von_anchor.indytween import Role
-from von_anchor.nodepool import NodePool, NodePoolManager
-from von_anchor.util import AnchorData, NodePoolData
-from von_anchor.wallet import Wallet
+from von_anchor.nodepool import NodePoolManager
+from von_anchor.op import AnchorData, NodePoolData
+from von_anchor.wallet import WalletManager
+
+from app.cache import MEM_CACHE
 
 
 LOGGER = logging.getLogger(__name__)
@@ -45,42 +43,52 @@ def boot() -> None:
     pool_data = NodePoolData(
         config['Node Pool']['name'],
         config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
-    manager = NodePoolManager()
-    if pool_data.name not in do_wait(manager.list()):
+    p_mgr = NodePoolManager()
+    if pool_data.name not in do_wait(p_mgr.list()):
         if pool_data.genesis_txn_path:
-            manager.add_config(pool_data.name, pool_data.genesis_txn_path)
+            p_mgr.add_config(pool_data.name, pool_data.genesis_txn_path)
         else:
-            LOGGER.debug(   
+            LOGGER.debug(
                 'Node pool %s has no ledger configuration but %s specifies no genesis txn path',
-                do_wait(MEM_CACHE.get('config.ini')),
-                pool_data.name)
+                pool_data.name,
+                do_wait(MEM_CACHE.get('config.ini')))
             raise AbsentPool('Node pool {} has no ledger configuration but {} specifies no genesis txn path'.format(
-                pool_data.name))
+                pool_data.name,
+                do_wait(MEM_CACHE.get('config.ini'))))
 
-    pool = manager.get(pool_data.name)
+    pool = p_mgr.get(pool_data.name)
     do_wait(pool.open())
     do_wait(MEM_CACHE.set('pool', pool))
 
     # instantiate tails server anchor
     tsan_data = AnchorData(
         Role.USER,
+        config['VON Anchor']['name'],
         config['VON Anchor'].get('seed', None) or None,
-        config['VON Anchor']['wallet.name'],
-        config['VON Anchor'].get('wallet.type', None) or None,
-        config['VON Anchor'].get('wallet.key', None) or None)
-
-    wallet = Wallet(
-        tsan_data.wallet_name,
-        tsan_data.wallet_type,
         None,
-        {'key': tsan_data.wallet_key} if tsan_data.wallet_key else None)
+        config['VON Anchor'].get('wallet.create', '0').lower() in ['1', 'true', 'yes'],
+        config['VON Anchor'].get('wallet.type', None) or None,
+        config['VON Anchor'].get('wallet.access', None) or None)
 
-    if tsan_data.seed:
+    w_mgr = WalletManager()
+    wallet = None
+
+    wallet_config = {
+        'id': tsan_data.name
+    }
+    if tsan_data.wallet_type:
+        wallet_config['storage_type'] = tsan_data.wallet_type
+    if tsan_data.wallet_create:
+        if tsan_data.seed:
+            wallet_config['seed'] = tsan_data.seed
         try:
-            do_wait(wallet.create(tsan_data.seed))
-            LOGGER.info('Created wallet %s', tsan_data.wallet_name)
+            wallet = do_wait(w_mgr.create(wallet_config, access=tsan_data.wallet_access))
+            LOGGER.info('Created wallet %s', tsan_data.name)
         except ExtantWallet:
-            LOGGER.warning('Wallet %s already exists: remove seed from config file', tsan_data.wallet_name)
+            wallet = do_wait(w_mgr.get(wallet_config, access=tsan_data.wallet_access))
+            LOGGER.warning('Wallet %s already exists: remove seed and wallet.create from config file', tsan_data.name)
+    else:
+        wallet = do_wait(w_mgr.get(wallet_config, access=tsan_data.wallet_access))
 
     do_wait(wallet.open())
     tsan = NominalAnchor(wallet, pool)

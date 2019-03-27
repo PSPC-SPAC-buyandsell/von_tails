@@ -229,10 +229,11 @@ def cli_ini(path_cli_ini, host_port, path_home, path_temp, pool_name, seed, gene
                 'genesis.txn.path={}'.format(genesis_txn_path),
                 '',
                 '[VON Anchor]',
+                'name=issuer',
                 'seed={}'.format(seed['issuer']),
-                'wallet.name=issuer',
+                'wallet.create=True',
                 'wallet.type=',
-                'wallet.key='
+                'wallet.access='
             ])
         },
         'prover': {
@@ -257,10 +258,11 @@ def cli_ini(path_cli_ini, host_port, path_home, path_temp, pool_name, seed, gene
                 'genesis.txn.path={}'.format(genesis_txn_path),
                 '',
                 '[VON Anchor]',
+                'name=tails-server',
                 'seed=${TAILS_SERVER_SEED:-00000000000000000000TailsServer1}',
-                'wallet.name=tails-server',
+                'wallet.create=True',
                 'wallet.type=',
-                'wallet.key='
+                'wallet.access='
             ])
         }
     }
@@ -300,17 +302,19 @@ def setnym_ini(path_setnym_ini, pool_name, seed, genesis_txn_path, genesis_txn_f
             'genesis.txn.path={}'.format(genesis_txn_path),
             '',
             '[Trustee Anchor]',
+            'name=trustee-anchor',
             'seed={}'.format(seed['trustee']),
-            'wallet.name=trustee-anchor',
+            'wallet.create=True',
             'wallet.type=',
-            'wallet.key=',
+            'wallet.access=',
             '',
             '[VON Anchor]',
             'role={}'.format('TRUST_ANCHOR' if profile == 'issuer' else ''),
+            'name={}'.format(profile),
             'seed={}'.format(seed[profile]),
-            'wallet.name={}'.format(profile),
+            'wallet.create=True',
             'wallet.type=',
-            'wallet.key='
+            'wallet.access='
         ]) for profile in path_setnym_ini
     }
 

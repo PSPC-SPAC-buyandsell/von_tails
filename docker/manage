@@ -83,6 +83,9 @@ get_dc_args() {
     if [ "${COMMAND}" == "start" ]
     then
         ARGS+="--force-recreate --abort-on-container-exit"
+    elif [ "${COMMAND}" == "rm" ]
+    then
+        ARGS+="--force"
     fi
 
     for ARG in $@

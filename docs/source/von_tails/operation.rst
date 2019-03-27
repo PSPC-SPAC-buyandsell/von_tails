@@ -95,10 +95,11 @@ These scripts take a ``.ini``-style configuration file with the following conten
     - ``name``: the name of the node pool
     - ``genesis.txn.path``: the path to the file with the node pool's genesis transactions (may omit if node pool already exists)
 * (for issuers only) section ``[VON Anchor]``, specifying:
+    - ``name``: the VON anchor wallet name
     - ``seed``: the seed for the (issuer) VON anchor (omit if wallet already exists)
-    - ``wallet.name``: the name of the wallet
+    - ``wallet.create``: (default False) whether to create the VON anchor wallet if it does not exist
     - ``wallet.type``: the wallet type (defaults to indy-sdk default)
-    - ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).
+    - ``wallet.access``: the value of the wallet access (password) credentials (defaults to VON anchor default).
 
 The VON Tails client scripts interpolate environment variables from these configuration files, but it may be more straightforward to set values directly (e.g., ``${HOST_PORT}``, ``${TAILS_SERVER_SEED}``).
 
@@ -124,7 +125,8 @@ The script takes a ``.ini``-style configuration file with the following content:
     - ``name``: the name of the node pool
     - ``genesis.txn.path``: the path to the file with the node pool's genesis transactions (may omit if node pool already exists)
 * section ``[VON Anchor]``, specifying:
+    - ``name``: the name of the wallet
     - ``seed``: the seed for the tails server VON anchor (omit if wallet already exists)
-    - ``wallet.name``: the name of the wallet
+    - ``wallet.create``: (default False) whether to create the VON anchor wallet if it does not exist
     - ``wallet.type``: the wallet type (defaults to indy-sdk default)
-    - ``wallet.key``: the value of the wallet access (password) credentials (defaults to VON anchor default).
+    - ``wallet.access``: the value of the wallet access (password) credentials (defaults to VON anchor default).

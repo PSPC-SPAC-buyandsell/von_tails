@@ -18,14 +18,12 @@ limitations under the License.
 import logging
 
 from os import sys
-from os.path import isdir
 from threading import Lock, Timer
 
 from von_anchor import NominalAnchor
 from von_anchor.frill import do_wait
-from von_anchor.nodepool import NodePool
 
-from sync import Profile, config, main, setup
+from .sync import Profile, main, setup
 
 
 LOCK = Lock()
@@ -49,18 +47,17 @@ def usage() -> None:
     print()
 
 
-def dispatch(profile: Profile, pool: NodePool, noman: NominalAnchor) -> None:
+def dispatch(profile: Profile, noman: NominalAnchor) -> None:
     """
     Dispatch a sync invocation.
 
     :param profile: tails client profile
-    :param pool: open node pool or None
     :param noman: open nominal anchor or None
     """
 
     if LOCK.acquire(False):  # demur if sync in progress
         try:
-            do_wait(main(profile, pool, noman))
+            do_wait(main(profile, noman))
         finally:
             LOCK.release()
 
@@ -74,14 +71,14 @@ def sched() -> None:
 
     if arg_n.isdigit():
         arg_config_ini = sys.argv[2]
-        (profile, pool, noman) = do_wait(setup(arg_config_ini))
+        (profile, noman) = do_wait(setup(arg_config_ini))
 
         iterations = min(max(1, int(arg_n)), 30)  # 1 <= n <= 60 iterations per minute
         interval = 60.0 / iterations
 
         threads = []
         for i in range(iterations):
-            threads.append(Timer(i * interval, dispatch, [profile, pool, noman]))
+            threads.append(Timer(i * interval, dispatch, [profile, noman]))
 
         for thread in threads:
             thread.start()

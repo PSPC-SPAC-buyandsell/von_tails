@@ -15,27 +15,22 @@ limitations under the License.
 """
 
 
-import asyncio
 import logging
-import re
 
-from os import makedirs, sys
-from os.path import basename, isdir, join
+from os import sys
 from time import time
-from typing import Any, Callable
 from urllib.parse import quote
 
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from von_anchor import NominalAnchor
 from von_anchor.error import ExtantWallet
 from von_anchor.frill import do_wait, inis2dict
 from von_anchor.indytween import Role
-from von_anchor.nodepool import NodePool, NodePoolManager
-from von_anchor.tails import Tails
-from von_anchor.util import AnchorData, NodePoolData
-from von_anchor.wallet import Wallet
+from von_anchor.nodepool import NodePoolManager
+from von_anchor.op import AnchorData, NodePoolData
+from von_anchor.wallet import WalletManager
 
 
 def usage() -> None:
@@ -64,12 +59,46 @@ def usage() -> None:
     print('    - genesis.txn.path: the path to the genesis transaction file')
     print('        for the node pool (may omit if pool already exists)')
     print('  * section [VON Anchor], pertaining to the tails server VON anchor:')
+    print("    - name: the VON anchor's wallet name")
     print("    - seed: the VON anchor's seed (omit if wallet exists)")
-    print("    - wallet.name: the VON anchor's wallet name")
+    print('    - wallet.create: (default False) whether to create the')
+    print('        tails server VON anchor wallet if it does not exist')
     print("    - wallet.type: (default blank) the VON anchor's wallet type")
-    print("    - wallet.key: (default blank) the VON anchor's")
+    print("    - wallet.access: (default blank) the VON anchor's")
     print('        wallet access credential (password) value.')
     print()
+
+
+async def get_wallet(tsan_data: AnchorData):
+    """
+    Get wallet given configuration data for Tails Server Anchor
+
+    :param tsan_data: Tails Server Anchor data
+    """
+
+    w_mgr = WalletManager()
+    rv = None
+
+    wallet_config = {
+        'id': tsan_data.name
+    }
+    if tsan_data.wallet_type:
+        wallet_config['storage_type'] = tsan_data.wallet_type
+    if tsan_data.wallet_create:
+        if tsan_data.seed:
+            wallet_config['seed'] = tsan_data.seed
+        try:
+            rv = await w_mgr.create(wallet_config, access=tsan_data.wallet_access)
+            logging.info('Created wallet %s', tsan_data.name)
+        except ExtantWallet:
+            rv = await w_mgr.get(wallet_config, access=tsan_data.wallet_access)
+            logging.warning(
+                'Wallet %s already exists: remove seed and wallet.create from config file',
+                tsan_data.name)
+    else:
+        rv = await w_mgr.get(wallet_config, access=tsan_data.wallet_access)
+
+    return rv
 
 
 async def admin_delete(ini_path: str, ident: str) -> int:
@@ -88,10 +117,12 @@ async def admin_delete(ini_path: str, ident: str) -> int:
         config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
     tsan_data = AnchorData(
         Role.USER,
+        config['VON Anchor']['name'],
         config['VON Anchor'].get('seed', None) or None,
-        config['VON Anchor']['wallet.name'],
+        None,
+        config['VON Anchor'].get('wallet.create', '0').lower() in ['1', 'true', 'yes'],
         config['VON Anchor'].get('wallet.type', None) or None,
-        config['VON Anchor'].get('wallet.key', None) or None)
+        config['VON Anchor'].get('wallet.access', None) or None)
 
     # Set up node pool ledger config and wallet
     manager = NodePoolManager()
@@ -104,22 +135,8 @@ async def admin_delete(ini_path: str, ident: str) -> int:
                 pool_data.name,
                 ini_path)
             return 1
-    
-    wallet = Wallet(
-        tsan_data.wallet_name,
-        tsan_data.wallet_type,
-        None,
-        {'key': tsan_data.wallet_key} if tsan_data.wallet_key else None)
 
-    if tsan_data.seed:
-        try:
-            await wallet.create(tsan_data.seed)
-            logging.info('Created wallet {}'.format(tsan_data.wallet_name))
-        except ExtantWallet:
-            logging.warning('Wallet {} already exists: remove seed from configuration file {}'.format(
-                tsan_data.wallet_name,
-                ini_path))
-
+    wallet = await get_wallet(tsan_data)
     async with wallet, (
             manager.get(pool_data.name)) as pool, (
             NominalAnchor(wallet, pool)) as noman:
@@ -134,7 +151,7 @@ async def admin_delete(ini_path: str, ident: str) -> int:
             logging.info('DELETE: url %s status %s', url, resp.status_code)
             if resp.status_code != requests.codes.ok:
                 return 1
-        except ConnectionError:
+        except RequestsConnectionError:
             logging.error('DELETE connection refused: %s', url)
             return 1
 
@@ -145,7 +162,6 @@ if __name__ == '__main__':
         format='%(asctime)-15s | %(levelname)-8s | %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S')
     logging.getLogger('urllib').setLevel(logging.ERROR)
-    logging.getLogger('asyncio').setLevel(logging.WARNING)
     logging.getLogger('von_anchor').setLevel(logging.WARNING)
     logging.getLogger('indy').setLevel(logging.CRITICAL)
 

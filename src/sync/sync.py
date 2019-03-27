@@ -15,34 +15,31 @@ limitations under the License.
 """
 
 
-import asyncio
 import atexit
 import logging
 import re
 
-from configparser import ConfigParser
 from enum import Enum
 from os import makedirs, sys
-from os.path import basename, expandvars, isdir, join
+from os.path import basename, isdir, join
 from time import time
-from typing import Any, Callable
 from urllib.parse import quote
 
 import requests
-from requests.exceptions import ConnectionError
+from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from indy.error import IndyError
 from von_anchor import NominalAnchor
 from von_anchor.error import ExtantWallet
 from von_anchor.frill import do_wait, inis2dict, ppjson
 from von_anchor.indytween import Role
 from von_anchor.nodepool import NodePool, NodePoolManager
+from von_anchor.op import AnchorData, NodePoolData
 from von_anchor.tails import Tails
-from von_anchor.util import AnchorData, NodePoolData, ok_rev_reg_id
-from von_anchor.wallet import Wallet
+from von_anchor.util import ok_rev_reg_id
+from von_anchor.wallet import WalletManager
 
 
-config = {}
+CONFIG = {}
 
 
 class Profile(Enum):
@@ -96,11 +93,13 @@ def usage() -> None:
     print('    - genesis.txn.path: the path to the genesis transaction file')
     print('        for the node pool (may omit if pool already exists)')
     print('  * (issuer only) section [VON Anchor], pertaining to the issuer VON anchor:')
+    print("    - name: the VON anchor's wallet name")
     print("    - seed: the VON anchor's seed (omit if wallet exists)")
-    print("    - wallet.name: the VON anchor's wallet name")
+    print('    - wallet.create: (default False) whether to create the')
+    print('        VON anchor wallet if it does not exist')
     print("    - wallet.type: (default blank) the VON anchor's wallet type")
-    print("    - wallet.key: (default blank) the VON anchor's")
-    print('        wallet access credential (password) value.')
+    print("    - wallet.access: (default blank) the VON anchor's")
+    print('        wallet access credentials (password) value.')
     print()
 
 
@@ -132,7 +131,6 @@ async def sync_issuer(
         host: str,
         port: int,
         local_only: set,
-        pool: NodePool,
         noman: NominalAnchor) -> None:
     """
     Synchronize for issuer: upload any tails files appearing locally but not remotely.
@@ -141,7 +139,6 @@ async def sync_issuer(
     :param host: tails server host
     :param port: tails server port
     :param local_only: paths to local tails symbolic links (rev reg ids) without corresponding remote tails files
-    :param pool: open node pool
     :param noman: open issuer anchor
     """
 
@@ -172,7 +169,7 @@ async def sync_issuer(
                     'signature': ('signature', sig)
                 })
             logging.info('Upload: url %s status %s', url, resp.status_code)
-        except ConnectionError:
+        except RequestsConnectionError:
             logging.error('POST connection refused: %s', url)
 
 
@@ -211,7 +208,7 @@ async def sync_prover(dir_tails: str, host: str, port: int, remote_only: set) ->
 
             else:
                 logging.error('Download: url %s, responded with status %s', url, resp.status_code)
-        except ConnectionError:
+        except RequestsConnectionError:
             logging.error('GET connection refused: %s', url)
 
 
@@ -221,19 +218,19 @@ async def setup(ini_path: str) -> tuple:
     then register both for shutdown at program exit.
 
     :param ini_path: path to configuration file
-    :return: tuple with profile, open node pool and issuer anchor; (profile, None, None) for prover.
+    :return: tuple (profile, issuer anchor) for issuer or (profile, None) for prover.
     """
 
-    global config
-    config = inis2dict(ini_path)
+    global CONFIG
+    CONFIG = inis2dict(ini_path)
 
-    profile = Profile.get(config['Tails Client']['profile'])
+    profile = Profile.get(CONFIG['Tails Client']['profile'])
     if profile != Profile.ISSUER:
-        return (profile, None, None)
+        return (profile, None)
 
     pool_data = NodePoolData(
-        config['Node Pool']['name'],
-        config['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
+        CONFIG['Node Pool']['name'],
+        CONFIG['Node Pool'].get('genesis.txn.path', None) or None)  # nudge empty value from '' to None
 
     # Set up node pool ledger config and wallet
     manager = NodePoolManager()
@@ -245,40 +242,47 @@ async def setup(ini_path: str) -> tuple:
                 'Node pool %s has no ledger configuration but %s specifies no genesis txn path',
                 pool_data.name,
                 ini_path)
-            return 1
-    
+            return (None, None)
+
     pool = manager.get(pool_data.name)
     await pool.open()
     atexit.register(close_pool, pool)
 
     noman_data = AnchorData(
         Role.USER,
-        config['VON Anchor'].get('seed', None) or None,
-        config['VON Anchor']['wallet.name'],
-        config['VON Anchor'].get('wallet.type', None) or None,
-        config['VON Anchor'].get('wallet.key', None) or None)
-
-    wallet = Wallet(
-        noman_data.wallet_name,
-        noman_data.wallet_type,
+        CONFIG['VON Anchor']['name'],
+        CONFIG['VON Anchor'].get('seed', None) or None,
         None,
-        {'key': noman_data.wallet_key} if noman_data.wallet_key else None)
+        CONFIG['VON Anchor'].get('wallet.create', '0').lower() in ['1', 'true', 'yes'],
+        CONFIG['VON Anchor'].get('wallet.type', None) or None,
+        CONFIG['VON Anchor'].get('wallet.access', None) or None)
 
-    if noman_data.seed:
+    w_mgr = WalletManager()
+    wallet = None
+
+    wallet_config = {
+        'id': noman_data.name
+    }
+    if noman_data.wallet_type:
+        wallet_config['storage_type'] = noman_data.wallet_type
+    if noman_data.wallet_create:
+        if noman_data.seed:
+            wallet_config['seed'] = noman_data.seed
         try:
-            await wallet.create(noman_data.seed)
-            logging.info('Created wallet {}'.format(noman_data.wallet_name))
+            wallet = await w_mgr.create(wallet_config, access=noman_data.wallet_access)
+            logging.info('Created wallet %s', noman_data.name)
         except ExtantWallet:
-            logging.warning('Wallet {} already exists: remove seed from configuration file {}'.format(
-                noman_data.wallet_name,
-                ini_path))
+            wallet = await w_mgr.get(wallet_config, access=noman_data.wallet_access)
+            logging.warning('Wallet %s already exists: remove seed and wallet.create from config file', noman_data.name)
+    else:
+        wallet = await w_mgr.get(wallet_config, access=noman_data.wallet_access)
 
     await wallet.open()
     noman = NominalAnchor(wallet, pool)
     await noman.open()
     atexit.register(close_anchor, noman)
 
-    return (profile, pool, noman)
+    return (profile, noman)
 
 
 def close_pool(pool: NodePool) -> None:
@@ -302,21 +306,20 @@ def close_anchor(anchor: NominalAnchor) -> None:
     do_wait(anchor.close())
 
 
-async def main(profile: Profile, pool: NodePool, noman: NominalAnchor) -> None:
+async def main(profile: Profile, noman: NominalAnchor) -> None:
     """
     Survey local and remote content, dispatch to synchronize issuer or prover.
 
     :param profile: tails client profile
-    :param pool: node pool (None for non-issuer)
     :param noman: nominal anchor (None for non-issuer)
     """
 
     assert profile
 
-    host = config['Tails Server']['host']
-    port = config['Tails Server']['port']
+    host = CONFIG['Tails Server']['host']
+    port = CONFIG['Tails Server']['port']
 
-    dir_tails = config['Tails Client']['tails.dir']
+    dir_tails = CONFIG['Tails Client']['tails.dir']
     if isdir(dir_tails) and port.isdigit():
         port = int(port)
         try:
@@ -327,12 +330,11 @@ async def main(profile: Profile, pool: NodePool, noman: NominalAnchor) -> None:
                     host,
                     port,
                     set(basename(p) for p in paths_local) - tails_remote,
-                    pool,
                     noman)
             else:
                 (paths_local, tails_remote) = survey(dir_tails, host, port)
                 await sync_prover(dir_tails, host, port, tails_remote - set(basename(p) for p in paths_local))
-        except ConnectionError:
+        except RequestsConnectionError:
             logging.error('Could not connect to tails server at %s:%s - connection refused', host, port)
     else:
         usage()
@@ -344,15 +346,14 @@ if __name__ == '__main__':
         format='%(asctime)-15s | %(levelname)-8s | %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S')
     logging.getLogger('urllib').setLevel(logging.ERROR)
-    logging.getLogger('asyncio').setLevel(logging.WARNING)
     logging.getLogger('von_anchor').setLevel(logging.WARNING)
     logging.getLogger('indy').setLevel(logging.CRITICAL)
 
     if len(sys.argv) != 2:
         usage()
     else:
-        (profile, pool, noman) = do_wait(setup(sys.argv[1]))
+        (profile, noman) = do_wait(setup(sys.argv[1]))
         if profile:
-            do_wait(main(profile, pool, noman))
-        elif pool:
+            do_wait(main(profile, noman))
+        else:
             logging.error('Configured tails client profile must be issuer or prover.')
