@@ -255,8 +255,8 @@ async def test_von_tails(pool_ip, genesis_txn_file, path_cli_ini, cli_ini, path_
 
         cd_id = cred_def_id(S_KEY.origin_did, schema['seqNo'], pool.protocol)
 
-        assert ((not Tails.unlinked(ian._dir_tails)) and
-            [f for f in Tails.links(ian._dir_tails, ian.did) if cd_id in f])
+        assert ((not Tails.unlinked(ian.dir_tails)) and
+            [f for f in Tails.links(ian.dir_tails, ian.did) if cd_id in f])
 
         cred_def_json = await ian.get_cred_def(cd_id)  # ought to exist now
         cred_def = json.loads(cred_def_json)
@@ -306,7 +306,7 @@ async def test_von_tails(pool_ip, genesis_txn_file, path_cli_ini, cli_ini, path_
             r = requests.get(url)
             assert r.status_code == 200
             assert not r.json()
-        rr_ids_up = {basename(link) for link in Tails.links(ian.dir_tails(), ian.did)}
+        rr_ids_up = {basename(link) for link in Tails.links(ian.dir_tails, ian.did)}
         for rr_id in rr_ids_up:
             url = url_for(tsrv.port, 'tails/list/{}'.format(rr_id))
             r = requests.get(url)
