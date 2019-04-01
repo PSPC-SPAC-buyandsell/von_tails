@@ -23,7 +23,7 @@ from threading import Lock, Timer
 from von_anchor import NominalAnchor
 from von_anchor.frill import do_wait
 
-from .sync import Profile, main, setup
+from sync import Profile, main, setup
 
 
 LOCK = Lock()

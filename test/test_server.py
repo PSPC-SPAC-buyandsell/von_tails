@@ -251,7 +251,7 @@ async def test_von_tails(pool_ip, genesis_txn_file, path_cli_ini, cli_ini, path_
         await pan.create_link_secret('LinkSecret')
 
         # Issuer anchor create, store, publish cred definitions to ledger; create cred offers
-        await ian.send_cred_def(S_ID, revocation=True)
+        await ian.send_cred_def(S_ID, revo=True)
 
         cd_id = cred_def_id(S_KEY.origin_did, schema['seqNo'], pool.protocol)
 
