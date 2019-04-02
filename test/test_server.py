@@ -47,7 +47,8 @@ MANAGE = join(dirname(dirname(abspath(__file__))), 'docker', 'manage')
 
 def shutdown():
     print('\n\n== X == Stopping tails server and node pool')
-    rv = pexpect.run('{} stop'.format(MANAGE))
+    pexpect.run('{} stop'.format(MANAGE))
+    pexpect.run('{} rm'.format(MANAGE))
 
 
 def is_up(host, port):
@@ -110,8 +111,9 @@ class TailsServer:
             raise ValueError('Timed out waiting on tails server')
 
         # wait for startup sequence to complete
-        print('\n\nWaiting on tails server for up to 60 seconds:', flush=True)
-        for i in range(1, 60):
+        TIMEOUT=120
+        print('\nWaiting on tails server for up to {} seconds:'.format(TIMEOUT))
+        for i in range(1, TIMEOUT):
             print('.', end='' if i % 10 else '{}\n'.format(i), flush=True)
             if self.is_up():
                 self._started = True
@@ -328,23 +330,53 @@ async def test_von_tails(pool_ip, genesis_txn_file, path_cli_ini, cli_ini, path_
             assert r.status_code == 200
             assert r.json() == [rr_id]  # list with one rr_id should come back
 
+        # Exercise list view, least to most specific
+        for tails_list_path in ('all', ian.did, cd_id):
+            url = url_for(tsrv.port, 'tails/list/{}'.format(tails_list_path))
+            r = requests.get(url)
+            assert r.status_code == 200
+            assert len(r.json()) == len(rr_ids_up)
+        print('\n\n== 12 == All listing views at server come back OK with {} uploaded files'.format(len(rr_ids_up)))
+
         rv = pexpect.run('python ../src/sync/sync.py {}'.format(path_cli_ini['prover']))
-        print('\n\n== 12 == Prover sync downloaded remote tails files')
+        print('\n\n== 13 == Prover sync downloaded remote tails files')
 
         rr_ids_down = {basename(link) for link in Tails.links(config['prover']['Tails Client']['tails.dir'], ian.did)}
         assert rr_ids_down == rr_ids_up
 
         # Exercise admin-delete
         rv = pexpect.run('python ../src/admin/delete.py {} all'.format(path_cli_ini['admin']))
-        print('\n\n== 13 == Admin called for deletion at tails server')
+        print('\n\n== 14 == Admin called for deletion at tails server')
 
         # Check tails server deletion
         url = url_for(tsrv.port, 'tails/list/all')
         r = requests.get(url)
         assert r.status_code == 200
         assert not r.json()
-        print('\n\n== 14 == All listing views at server come back OK and empty as expected')
+        print('\n\n== 15 == All listing views at server come back OK and empty as expected')
+
+        rv = pexpect.run('python ../src/sync/multisync.py 1 {}'.format(path_cli_ini['issuer']))
+        print('\n\n== 16 == Issuer multisync on 1 sync iteration uploaded local tails files')
+
+        for tails_list_path in ('all', ian.did, cd_id):
+            url = url_for(tsrv.port, 'tails/list/{}'.format(tails_list_path))
+            r = requests.get(url)
+            assert r.status_code == 200
+            assert {rr for rr in r.json()} == rr_ids_up
+        for rr_id in rr_ids_up:
+            url = url_for(tsrv.port, 'tails/list/{}'.format(rr_id))
+            r = requests.get(url)
+            assert r.status_code == 200
+            assert r.json() == [rr_id]  # list with one rr_id should come back
+
+        # Exercise list view, least to most specific
+        for tails_list_path in ('all', ian.did, cd_id):
+            url = url_for(tsrv.port, 'tails/list/{}'.format(tails_list_path))
+            r = requests.get(url)
+            assert r.status_code == 200
+            assert len(r.json()) == len(rr_ids_up)
+        print('\n\n== 17 == All listing views at server come back OK with {} uploaded files'.format(len(rr_ids_up)))
 
         # Remove tails server anchor wallet
         await wallets['admin'].remove()
-        print('\n\n== 15 == Removed admin (tails server anchor {}) wallet'.format(wallets['admin'].name))
+        print('\n\n== 18 == Removed admin (tails server anchor {}) wallet'.format(wallets['admin'].name))
