@@ -272,10 +272,10 @@ async def setup(ini_path: str) -> tuple:
             wallet = await w_mgr.create(wallet_config, access=noman_data.wallet_access)
             logging.info('Created wallet %s', noman_data.name)
         except ExtantWallet:
-            wallet = await w_mgr.get(wallet_config, access=noman_data.wallet_access)
+            wallet = w_mgr.get(wallet_config, access=noman_data.wallet_access)
             logging.warning('Wallet %s already exists: remove seed and wallet.create from config file', noman_data.name)
     else:
-        wallet = await w_mgr.get(wallet_config, access=noman_data.wallet_access)
+        wallet = w_mgr.get(wallet_config, access=noman_data.wallet_access)
 
     await wallet.open()
     noman = NominalAnchor(wallet, pool)

@@ -85,10 +85,10 @@ def boot() -> None:
             wallet = do_wait(w_mgr.create(wallet_config, access=tsan_data.wallet_access))
             LOGGER.info('Created wallet %s', tsan_data.name)
         except ExtantWallet:
-            wallet = do_wait(w_mgr.get(wallet_config, access=tsan_data.wallet_access))
+            wallet = w_mgr.get(wallet_config, access=tsan_data.wallet_access)
             LOGGER.warning('Wallet %s already exists: remove seed and wallet.create from config file', tsan_data.name)
     else:
-        wallet = do_wait(w_mgr.get(wallet_config, access=tsan_data.wallet_access))
+        wallet = w_mgr.get(wallet_config, access=tsan_data.wallet_access)
 
     do_wait(wallet.open())
     tsan = NominalAnchor(wallet, pool)

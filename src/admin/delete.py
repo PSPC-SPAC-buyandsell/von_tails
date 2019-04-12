@@ -91,12 +91,12 @@ async def get_wallet(tsan_data: AnchorData):
             rv = await w_mgr.create(wallet_config, access=tsan_data.wallet_access)
             logging.info('Created wallet %s', tsan_data.name)
         except ExtantWallet:
-            rv = await w_mgr.get(wallet_config, access=tsan_data.wallet_access)
+            rv = w_mgr.get(wallet_config, access=tsan_data.wallet_access)
             logging.warning(
                 'Wallet %s already exists: remove seed and wallet.create from config file',
                 tsan_data.name)
     else:
-        rv = await w_mgr.get(wallet_config, access=tsan_data.wallet_access)
+        rv = w_mgr.get(wallet_config, access=tsan_data.wallet_access)
 
     return rv
 
