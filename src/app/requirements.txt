@@ -1,4 +1,4 @@
 sanic>=0.8.3
 aiocache>=0.10.1
-python3-indy==1.8.3-dev-1070
-von_anchor==1.8.27
+python3-indy==1.8.3-dev-1109
+von_anchor==1.8.28
