@@ -32,7 +32,7 @@ from os.path import abspath, basename, dirname, expandvars, isfile, join as join
 from requests.exceptions import ConnectionError
 from time import sleep, time
 
-from von_anchor import BCRegistrarAnchor, OrgBookAnchor
+from von_anchor import RegistrarAnchor, OrgBookAnchor
 from von_anchor.error import AbsentSchema, ExtantWallet
 from von_anchor.frill import inis2dict, ppjson, Ink
 from von_anchor.indytween import SchemaKey
@@ -219,7 +219,7 @@ async def test_von_tails(pool_ip, genesis_txn_file, path_cli_ini, cli_ini, path_
     async with wallets['issuer'] as w_issuer, (
             wallets['prover']) as w_prover, (
             NodePool(config['issuer']['Node Pool']['name'])) as pool, (
-            BCRegistrarAnchor(w_issuer, pool)) as ian, (
+            RegistrarAnchor(w_issuer, pool)) as ian, (
             OrgBookAnchor(w_prover, pool)) as pan:
 
         # Get nyms from ledger for display
