@@ -46,7 +46,7 @@ def boot() -> None:
     p_mgr = NodePoolManager()
     if pool_data.name not in do_wait(p_mgr.list()):
         if pool_data.genesis_txn_path:
-            p_mgr.add_config(pool_data.name, pool_data.genesis_txn_path)
+            do_wait(p_mgr.add_config(pool_data.name, pool_data.genesis_txn_path))
         else:
             LOGGER.debug(
                 'Node pool %s has no ledger configuration but %s specifies no genesis txn path',

@@ -22,15 +22,13 @@ from os import makedirs, unlink
 from os.path import basename, dirname, exists, isdir, isfile, islink, join, realpath
 from shutil import rmtree
 from time import time
-from urllib.parse import unquote
 
 from sanic import response
-from sanic.request import File as SanicReqFile, Request
+from sanic.request import Request
 from sanic.response import HTTPResponse
-from sanic.exceptions import Forbidden, InvalidUsage, NotFound
 from von_anchor.error import AbsentRevReg
 from von_anchor.tails import Tails
-from von_anchor.util import cred_def_id2seq_no, ok_cred_def_id, ok_did, ok_rev_reg_id, rev_reg_id2cred_def_id
+from von_anchor.util import ok_cred_def_id, ok_did, ok_rev_reg_id, rev_reg_id2cred_def_id
 
 from app import app
 from app.cache import MEM_CACHE
@@ -199,7 +197,7 @@ async def list_tails(request: Request, ident: str) -> HTTPResponse:
 
 
 @app.delete('/tails/<ident:.+>/<epoch:[0-9]+>')
-async def delete_tails(request: Request, ident:str, epoch: int) -> HTTPResponse:
+async def delete_tails(request: Request, ident: str, epoch: int) -> HTTPResponse:
     """
     Delete tails files by corresponding rev reg ids: all, by rev reg id, by cred def id, or by issuer DID.
 
