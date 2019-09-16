@@ -1,6 +1,6 @@
 requests>=2.21.0
 python3-indy==1.11.1
-von_anchor==1.11.3
+von_anchor==1.11.4
 pexpect>=4.3.0
 pytest>=3.6.4,<4.0
 pytest-asyncio==0.8.0
