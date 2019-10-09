@@ -104,5 +104,5 @@ ENV/
 .pytest_cache/
 
 # interstitial docker build files copied from von_base
-./docker/indy-pool.dockerfile
-./docker/libindy.so.tgz
+docker/indy-pool.dockerfile
+docker/libindy.so.tgz

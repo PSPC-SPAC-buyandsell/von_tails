@@ -56,7 +56,7 @@ async def get_did(request: Request) -> HTTPResponse:
     Get the DID of Tails Server anchor
 
     :param request: Sanic request
-    :return: response containing tails server nominal anchor DID
+    :return: response containing DID of tails server nominal anchor
     """
 
     tsan = await MEM_CACHE.get('tsan')
